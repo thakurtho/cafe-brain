@@ -1,6 +1,12 @@
 /**
  * Seeds the Musafir Cafe dummy data from /docs into Supabase.
  *
+ * NOTE: this needs SUPABASE_SERVICE_ROLE_KEY (admin API + RLS bypass — see
+ * the file header further down for why). If you'd rather not put the
+ * service role key anywhere, including your own local .env.local, use
+ * supabase/seed/seed.sql instead — same data, run directly in Supabase
+ * Studio's SQL Editor, no API key of any kind required.
+ *
  * Only tables the 8 dummy-data docs actually contain data for get seeded:
  * brands, outlets, users, org_positions, menu_items, recipes,
  * recipe_variants, machines, customers, vendors, sops, checklist_items,

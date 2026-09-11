@@ -53,12 +53,28 @@ local CLI dev, the test OTP (`123456`) works without a provider.
 
 ### Seed the Musafir Cafe dummy data
 
+Two ways to do this — pick based on whether you want the service role key
+touching anything outside your Supabase dashboard:
+
+**No API key at all (recommended):** open Supabase Studio → SQL Editor,
+paste in the contents of [`supabase/seed/seed.sql`](supabase/seed/seed.sql),
+and run it. It runs as the database owner (bypasses RLS, can create the 3
+staff auth accounts directly), is wrapped in one transaction, and is safe
+to run more than once — every insert is guarded by `WHERE NOT EXISTS` on a
+natural key. Ends with a row-count summary per table so you can confirm it
+worked right in the results pane.
+
+**Node script (needs the service role key):**
+
 ```bash
 npm run seed
 ```
 
-Safe to re-run — it finds-or-creates rather than blindly inserting, keyed
-on natural identifiers (name, phone, title, etc).
+Requires `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` — it calls the auth
+admin API to create users and needs to bypass RLS to write everything else.
+That key only ever needs to live in your local `.env.local`, never
+anywhere else. Also safe to re-run (find-or-create, keyed on natural
+identifiers).
 
 ### Run the app
 
