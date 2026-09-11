@@ -50,11 +50,13 @@ export interface Database {
         Row: { id: string; name: string; created_at: string };
         Insert: { id?: string; name: string; created_at?: string };
         Update: { id?: string; name?: string; created_at?: string };
+        Relationships: [];
       };
       outlets: {
         Row: { id: string; brand_id: string; name: string; location: string | null; created_at: string };
         Insert: { id?: string; brand_id: string; name: string; location?: string | null; created_at?: string };
         Update: { id?: string; brand_id?: string; name?: string; location?: string | null; created_at?: string };
+        Relationships: [];
       };
       users: {
         Row: {
@@ -72,6 +74,7 @@ export interface Database {
           email?: string | null; role?: string; access_tier?: AccessTier; language_preference?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       org_positions: {
         Row: {
@@ -86,26 +89,31 @@ export interface Database {
           id?: string; outlet_id?: string; role_title?: string; reports_to_position_id?: string | null;
           filled_by?: string | null; level?: number; created_at?: string;
         };
+        Relationships: [];
       };
       menu_items: {
         Row: { id: string; outlet_id: string; name: string; category: string; price: number | null; created_at: string };
         Insert: { id?: string; outlet_id: string; name: string; category: string; price?: number | null; created_at?: string };
         Update: { id?: string; outlet_id?: string; name?: string; category?: string; price?: number | null; created_at?: string };
+        Relationships: [];
       };
       machines: {
         Row: { id: string; outlet_id: string; name: string; type: string | null; installed_on: string | null; created_at: string };
         Insert: { id?: string; outlet_id: string; name: string; type?: string | null; installed_on?: string | null; created_at?: string };
         Update: { id?: string; outlet_id?: string; name?: string; type?: string | null; installed_on?: string | null; created_at?: string };
+        Relationships: [];
       };
       customers: {
         Row: { id: string; outlet_id: string; name: string; phone: string | null; preferences: string | null; created_at: string };
         Insert: { id?: string; outlet_id: string; name: string; phone?: string | null; preferences?: string | null; created_at?: string };
         Update: { id?: string; outlet_id?: string; name?: string; phone?: string | null; preferences?: string | null; created_at?: string };
+        Relationships: [];
       };
       vendors: {
         Row: { id: string; outlet_id: string; name: string; category: string | null; supplies: string | null; created_at: string };
         Insert: { id?: string; outlet_id: string; name: string; category?: string | null; supplies?: string | null; created_at?: string };
         Update: { id?: string; outlet_id?: string; name?: string; category?: string | null; supplies?: string | null; created_at?: string };
+        Relationships: [];
       };
       recipes: {
         Row: {
@@ -123,6 +131,7 @@ export interface Database {
           owner_id?: string | null; version?: number; status?: ApprovalStatus; approved_by?: string | null;
           approved_at?: string | null; created_at?: string;
         };
+        Relationships: [];
       };
       recipe_variants: {
         Row: {
@@ -140,6 +149,7 @@ export interface Database {
           source_session_id?: string | null; status?: ApprovalStatus; approved_by?: string | null;
           approved_at?: string | null; is_standing_option?: boolean; created_at?: string;
         };
+        Relationships: [];
       };
       sops: {
         Row: {
@@ -157,6 +167,7 @@ export interface Database {
           owner_id?: string | null; pending_edit_content?: string | null; edit_source?: string | null; version?: number;
           status?: ApprovalStatus; approved_by?: string | null; approved_at?: string | null; created_at?: string;
         };
+        Relationships: [];
       };
       training_modules: {
         Row: {
@@ -177,6 +188,7 @@ export interface Database {
           edit_source?: string | null; version?: number; status?: ApprovalStatus; approved_by?: string | null;
           approved_at?: string | null; created_at?: string;
         };
+        Relationships: [];
       };
       checklist_items: {
         Row: {
@@ -191,6 +203,7 @@ export interface Database {
           id?: string; outlet_id?: string; title?: string; linked_sop_id?: string | null; proof_type?: ProofType;
           required?: boolean; category?: ChecklistCategory; created_at?: string;
         };
+        Relationships: [];
       };
       training_progress: {
         Row: {
@@ -205,6 +218,7 @@ export interface Database {
           id?: string; outlet_id?: string; user_id?: string; training_module_id?: string; status?: string;
           completed_at?: string | null; created_at?: string;
         };
+        Relationships: [];
       };
       sessions: {
         Row: {
@@ -222,11 +236,13 @@ export interface Database {
           status?: SessionStatus; started_at?: string; closed_at?: string | null; flagged?: boolean;
           flag_reason?: string | null; created_at?: string;
         };
+        Relationships: [];
       };
       messages: {
         Row: { id: string; session_id: string; sender: MessageSender; text: string | null; media_url: string | null; created_at: string };
         Insert: { id?: string; session_id: string; sender: MessageSender; text?: string | null; media_url?: string | null; created_at?: string };
         Update: { id?: string; session_id?: string; sender?: MessageSender; text?: string | null; media_url?: string | null; created_at?: string };
+        Relationships: [];
       };
       session_classifications: {
         Row: {
@@ -241,6 +257,7 @@ export interface Database {
           id?: string; session_id?: string; classified_as?: ClassificationType; resulting_id?: string | null;
           confidence?: number | null; created_at?: string;
         };
+        Relationships: [];
       };
       observations: {
         Row: {
@@ -255,11 +272,13 @@ export interface Database {
           id?: string; outlet_id?: string; source_session_id?: string | null; entity_type?: string | null;
           entity_id?: string | null; summary?: string; status?: string; created_at?: string;
         };
+        Relationships: [];
       };
       fyis: {
         Row: { id: string; source_session_id: string | null; outlet_id: string; summary: string; created_at: string };
         Insert: { id?: string; source_session_id?: string | null; outlet_id: string; summary: string; created_at?: string };
         Update: { id?: string; source_session_id?: string | null; outlet_id?: string; summary?: string; created_at?: string };
+        Relationships: [];
       };
       patterns: {
         Row: {
@@ -277,6 +296,7 @@ export interface Database {
           observation_ids?: string[]; summary?: string; proposed_action?: string | null; status?: ApprovalStatus;
           approved_by?: string | null; approved_at?: string | null; brand_visible?: boolean; created_at?: string;
         };
+        Relationships: [];
       };
       tasks: {
         Row: {
@@ -303,6 +323,7 @@ export interface Database {
           completion_mode?: CompletionMode; auto_close_entity_type?: string | null; auto_close_entity_id?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       incidents: {
         Row: {
@@ -329,6 +350,7 @@ export interface Database {
           handover_session_id?: string | null; response_type?: IncidentResponseType; requires_immediate_call?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       judgment_calls: {
         Row: {
@@ -349,6 +371,7 @@ export interface Database {
           promoted_to_pattern_id?: string | null; flagged_to_manager?: boolean; manager_notified_at?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       knowledge_gaps: {
         Row: {
@@ -372,6 +395,7 @@ export interface Database {
           resolution_text?: string | null; promoted_to_type?: string | null; promoted_to_id?: string | null;
           resolved_by?: string | null; resolved_at?: string | null; created_at?: string;
         };
+        Relationships: [];
       };
       wastage_entries: {
         Row: {
@@ -395,11 +419,13 @@ export interface Database {
           reversed_by?: string | null; reversed_at?: string | null; reversal_pos_entry_id?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       pos_permissions: {
         Row: { id: string; outlet_id: string; action_type: string; mode: PosPermissionMode; created_at: string };
         Insert: { id?: string; outlet_id: string; action_type: string; mode: PosPermissionMode; created_at?: string };
         Update: { id?: string; outlet_id?: string; action_type?: string; mode?: PosPermissionMode; created_at?: string };
+        Relationships: [];
       };
       pos_synced_tasks: {
         Row: {
@@ -414,6 +440,7 @@ export interface Database {
           id?: string; outlet_id?: string; pos_task_id?: string; description?: string; assigned_to?: string | null;
           synced_at?: string; status?: string; created_at?: string;
         };
+        Relationships: [];
       };
       scheduled_shifts: {
         Row: {
@@ -431,6 +458,7 @@ export interface Database {
           start_time?: string; end_time?: string; status?: string; pos_shift_id?: string | null;
           synced_at?: string | null; created_at?: string;
         };
+        Relationships: [];
       };
       shift_handovers: {
         Row: {
@@ -448,6 +476,7 @@ export interface Database {
           unresolved_incident_ids?: string[]; compiled_summary?: string | null; gaps_flagged?: boolean;
           signed_off_by?: string | null; signed_off_at?: string | null; created_at?: string;
         };
+        Relationships: [];
       };
       shift_openings: {
         Row: {
@@ -465,6 +494,7 @@ export interface Database {
           incoming_handover_id?: string | null; carried_items_reviewed?: boolean; discrepancy_flagged?: boolean;
           discrepancy_note?: string | null; started_at?: string; created_at?: string;
         };
+        Relationships: [];
       };
       checklist_completions: {
         Row: {
@@ -482,6 +512,7 @@ export interface Database {
           shift_handover_id?: string | null; completed_by?: string | null; proof_media_url?: string | null;
           proof_value?: string | null; voice_session_id?: string | null; verified?: boolean; created_at?: string;
         };
+        Relationships: [];
       };
       compliance_reminders: {
         Row: {
@@ -500,11 +531,13 @@ export interface Database {
           proof_document_url?: string | null; status?: ComplianceStatus; cleared_by?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       entity_links: {
         Row: { id: string; source_type: string; source_id: string; entity_type: string; entity_id: string; created_at: string };
         Insert: { id?: string; source_type: string; source_id: string; entity_type: string; entity_id: string; created_at?: string };
         Update: { id?: string; source_type?: string; source_id?: string; entity_type?: string; entity_id?: string; created_at?: string };
+        Relationships: [];
       };
       report_definitions: {
         Row: {
@@ -519,6 +552,7 @@ export interface Database {
           id?: string; outlet_id?: string; name?: string; entity_type?: string; metric?: string; filter?: Json | null;
           group_by?: string | null; time_window?: string | null; recipient_role?: AccessTier | null; created_at?: string;
         };
+        Relationships: [];
       };
       report_instances: {
         Row: {
@@ -536,6 +570,7 @@ export interface Database {
           data_body?: Json; insight_text?: string | null; actionable_text?: string | null; source_ids?: string[];
           created_at?: string;
         };
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

@@ -2,14 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { submitTell, submitAsk, type TellResult, type AskResult } from "./actions";
+import { MicButton } from "./mic-button";
 
 export default function Home() {
   return (
     <main style={{ fontFamily: "sans-serif", padding: "2rem", maxWidth: 640 }}>
       <h1>Outlet Brain — Ask / Tell test harness</h1>
       <p>
-        Typed input only, no auth. Every Tell is logged as Aman Rawat. Reads/writes go straight
-        to the seeded Musafir Cafe data.
+        No auth. Every Tell is logged as Aman Rawat. Reads/writes go straight to the seeded
+        Musafir Cafe data. 🎤 uses the browser&apos;s built-in speech-to-text (Chrome/Edge only,
+        free, no account) — good enough for testing, not for Hindi/regional languages yet.
       </p>
       <TellBox />
       <hr style={{ margin: "2rem 0" }} />
@@ -19,6 +21,7 @@ export default function Home() {
 }
 
 function TellBox() {
+  const [text, setText] = useState("");
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<TellResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +35,9 @@ function TellBox() {
           setResult(null);
           startTransition(async () => {
             try {
-              setResult(await submitTell(formData));
+              const r = await submitTell(formData);
+              setResult(r);
+              setText("");
             } catch (e) {
               setError(e instanceof Error ? e.message : String(e));
             }
@@ -43,12 +48,16 @@ function TellBox() {
           name="text"
           rows={3}
           style={{ width: "100%" }}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
           placeholder={`e.g. "Machine 2 is running slow" or "Shweta didn't like her coffee, we remade it"`}
         />
-        <br />
-        <button type="submit" disabled={pending}>
-          {pending ? "Classifying…" : "Submit"}
-        </button>
+        <div style={{ marginTop: 4 }}>
+          <button type="submit" disabled={pending}>
+            {pending ? "Classifying…" : "Submit"}
+          </button>
+          <MicButton value={text} onChange={setText} />
+        </div>
       </form>
       {error && <p style={{ color: "crimson" }}>{error}</p>}
       {result && (
@@ -74,6 +83,7 @@ function TellBox() {
 }
 
 function AskBox() {
+  const [question, setQuestion] = useState("");
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<AskResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +97,8 @@ function AskBox() {
           setResult(null);
           startTransition(async () => {
             try {
-              setResult(await submitAsk(formData));
+              const r = await submitAsk(formData);
+              setResult(r);
             } catch (e) {
               setError(e instanceof Error ? e.message : String(e));
             }
@@ -98,12 +109,16 @@ function AskBox() {
           name="question"
           rows={2}
           style={{ width: "100%" }}
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
           placeholder={`e.g. "What's the recipe for a cappuccino?" or "What's Shweta's usual order?"`}
         />
-        <br />
-        <button type="submit" disabled={pending}>
-          {pending ? "Thinking…" : "Ask"}
-        </button>
+        <div style={{ marginTop: 4 }}>
+          <button type="submit" disabled={pending}>
+            {pending ? "Thinking…" : "Ask"}
+          </button>
+          <MicButton value={question} onChange={setQuestion} />
+        </div>
       </form>
       {error && <p style={{ color: "crimson" }}>{error}</p>}
       {result && (
