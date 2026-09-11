@@ -1,10 +1,6 @@
 /**
- * Hand-written types for the pieces of the schema the app currently touches.
- * Once the CLI is linked to a real project, replace/extend this with generated
- * types via:
- *
- *   npx supabase gen types typescript --project-id <ref> --schema public > lib/supabase/database.types.ts
- *
- * and swap the `Database` generic below for the generated one.
+ * Re-exports the generated-style Database type. See database.types.ts for
+ * how to replace this with a real `supabase gen types` pull once the CLI
+ * is linked to the live project.
  */
-export type Database = Record<string, unknown>;
+export type { Database, Json } from "./database.types";
