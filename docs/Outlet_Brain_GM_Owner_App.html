@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outlet Brain — GM / Owner App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#241F1C; --paper:#F3EEE4; --card:#FFFFFF; --chrome:#221D19;
+    --copper:#B5651D; --copper-light:#F3D9BE; --copper-dark:#7A4413;
+    --sage:#4B6B4E; --sage-light:#E1EAE0;
+    --brick:#A83B32; --brick-light:#F5DAD7;
+    --blue:#3D5A80; --blue-light:#E3EAF2;
+    --purple:#6B3FA0; --purple-light:#EFE3F5;
+    --muted:#8A8375; --border:#E4DDCB;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#DCD5C4;font-family:'Work Sans',sans-serif;color:var(--ink);
+    display:flex;justify-content:center;padding:32px 12px;min-height:100vh;}
+  h1,h2,h3,.serif{font-family:'Fraunces',serif;}
+  .phone{width:390px;background:var(--paper);border-radius:34px;overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,0.28);display:flex;flex-direction:column;height:860px;}
+  .statusbar{background:var(--chrome);color:#fff;padding:20px 22px 16px;flex-shrink:0;}
+  .statusbar .brand{font-size:12px;color:#C7BDA8;margin-bottom:4px;}
+  .statusbar .row{display:flex;align-items:center;justify-content:space-between;}
+  .statusbar .greet{font-family:'Fraunces',serif;font-size:20px;font-weight:500;}
+  .rolepill{font-size:10.5px;color:#C7BDA8;background:rgba(255,255,255,0.08);padding:3px 9px;border-radius:20px;margin-top:4px;display:inline-block;}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--copper);
+    display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#fff;flex-shrink:0;cursor:pointer;}
+  .screen{flex:1;overflow-y:auto;padding:20px 20px 90px;display:none;}
+  .screen.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px;margin-bottom:14px;}
+  .sub{color:var(--muted);font-size:13px;}
+  .btn{border:none;border-radius:12px;padding:13px 18px;font-family:'Work Sans';font-weight:600;
+    font-size:14px;cursor:pointer;width:100%;text-align:center;}
+  .btn-copper{background:var(--copper);color:#fff;}
+  .btn-sage{background:var(--sage);color:#fff;}
+  .btn-ghost{background:#fff;border:1.5px solid var(--border);color:var(--ink);}
+  .btn-sm{padding:8px 13px;font-size:12.5px;width:auto;border-radius:9px;}
+  .row2{display:flex;gap:8px;}
+  .row2 .btn{flex:1;}
+  .backrow{display:flex;align-items:center;gap:8px;margin-bottom:14px;cursor:pointer;}
+  .backrow svg{width:18px;height:18px;}
+  .backrow span{font-size:14px;color:var(--muted);}
+  .section-label{font-size:12px;color:var(--muted);margin:18px 0 8px;}
+  .section-label:first-of-type{margin-top:0;}
+
+  /* OUTLET SELECTOR */
+  .outlet-chips{display:flex;gap:8px;overflow-x:auto;margin-bottom:16px;padding-bottom:2px;}
+  .ochip{flex-shrink:0;border:1.5px solid var(--border);border-radius:20px;padding:7px 14px;
+    font-size:12.5px;cursor:pointer;background:#fff;white-space:nowrap;}
+  .ochip.on{background:var(--chrome);border-color:var(--chrome);color:#fff;}
+
+  /* HOME */
+  .voice-tile{background:var(--chrome);border-radius:20px;padding:22px 18px;text-align:center;margin-bottom:14px;}
+  .voice-tile.tell{background:var(--copper-dark);}
+  .mic-btn{width:64px;height:64px;border-radius:50%;background:var(--copper);border:none;
+    display:flex;align-items:center;justify-content:center;margin:0 auto 10px;cursor:pointer;}
+  .voice-tile.tell .mic-btn{background:#fff;}
+  .mic-btn svg{width:26px;height:26px;}
+  .voice-tile .vlabel{color:#fff;font-family:'Fraunces',serif;font-size:16px;margin-bottom:3px;}
+  .voice-tile .vsub{color:#C7BDA8;font-size:12px;}
+  .signal-row{padding:11px 0;border-bottom:1px solid var(--border);}
+  .signal-row:last-child{border-bottom:none;}
+  .signal-text{font-size:13.5px;margin-bottom:3px;}
+  .signal-meta{font-size:11.5px;color:var(--muted);}
+  .link{font-size:12.5px;color:var(--copper-dark);text-decoration:underline;cursor:pointer;}
+
+  /* TASKS (brand patterns) */
+  .kanban-col{margin-bottom:20px;}
+  .kanban-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .kanban-head h3{font-size:13px;font-family:'Work Sans';font-weight:600;color:var(--muted);text-transform:none;}
+  .kanban-count{font-size:11.5px;color:var(--muted);background:var(--card);border:1px solid var(--border);
+    padding:1px 8px;border-radius:20px;}
+  .kcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+  .kcard.decide{border-left:3px solid var(--copper);}
+  .kcard.do{border-left:3px solid var(--blue);}
+  .ktype{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:8px;}
+  .kt-brand{background:var(--purple-light);color:var(--purple);}
+  .kt-task{background:var(--blue-light);color:var(--blue);}
+  .ktitle{font-size:14px;font-weight:500;margin-bottom:6px;}
+  .kmeta{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .outlet-tag{display:inline-block;font-size:11px;color:var(--copper-dark);background:var(--copper-light);
+    padding:2px 8px;border-radius:20px;margin:2px 4px 2px 0;}
+  .proposed-box{background:var(--paper);border:1px solid var(--border);border-radius:10px;padding:9px 11px;margin-bottom:10px;}
+  .proposed-box textarea{width:100%;border:none;background:transparent;font-size:12.5px;font-family:'Work Sans';resize:none;height:56px;outline:none;}
+  .kdone{opacity:0.55;}
+  .kdone .ktitle{text-decoration:line-through;}
+  .archive-link{font-size:11.5px;color:var(--muted);text-decoration:underline;cursor:pointer;}
+
+  /* SHIFT */
+  .weekstrip{display:flex;gap:6px;margin-bottom:18px;}
+  .daychip{flex:1;text-align:center;padding:10px 0;border-radius:12px;background:var(--card);border:1px solid var(--border);}
+  .daychip.today{background:var(--chrome);border-color:var(--chrome);}
+  .daychip .d{font-size:11px;color:var(--muted);}
+  .daychip.today .d{color:#C7BDA8;}
+  .daychip .n{font-family:'Fraunces',serif;font-size:16px;margin-top:2px;}
+  .daychip.today .n{color:#fff;}
+  .outlet-summary-card{background:var(--card);border:1px solid var(--border);border-radius:16px;
+    padding:16px 18px;margin-bottom:12px;}
+  .outlet-summary-name{font-size:14.5px;font-weight:500;margin-bottom:6px;}
+  .outlet-shift-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .outlet-shift-row:last-child{border-bottom:none;}
+  .vacancy{color:var(--brick);}
+  .hint{font-size:12px;color:var(--muted);text-align:center;margin-top:10px;}
+
+  /* REPORTS */
+  .rtabs{display:flex;gap:6px;margin-bottom:16px;}
+  .rtab{flex:1;text-align:center;padding:9px 0;border-radius:10px;font-size:12.5px;background:var(--card);
+    border:1px solid var(--border);cursor:pointer;}
+  .rtab.on{background:var(--chrome);border-color:var(--chrome);color:#fff;}
+  .insight-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px;margin-bottom:12px;}
+  .insight-src{font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:6px;}
+  .insight-text{font-size:13.5px;margin-bottom:8px;}
+  .actionable-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--paper);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+  .actionable-text{font-size:12.5px;color:var(--copper-dark);flex:1;}
+  .compare-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px;}
+  .compare-row:last-child{border-bottom:none;}
+  .compare-val{color:var(--muted);}
+  .data-toggle{font-size:11.5px;color:var(--muted);text-decoration:underline;cursor:pointer;}
+  .data-view{display:none;margin-top:10px;background:var(--paper);border-radius:10px;padding:10px 12px;font-size:12px;}
+  .data-view.show{display:block;}
+  .report-title{font-size:14.5px;font-weight:500;margin-bottom:4px;}
+  .report-period{font-size:11.5px;color:var(--muted);margin-bottom:6px;}
+
+  /* PROFILE / BRAND ADMIN */
+  .profile-header{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+  .profile-avatar{width:56px;height:56px;border-radius:50%;background:var(--copper);
+    display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;color:#fff;}
+  .profile-name{font-family:'Fraunces',serif;font-size:19px;}
+  .profile-role{font-size:13px;color:var(--muted);}
+  .admin-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+  .admin-row:last-child{border-bottom:none;}
+  .admin-title{font-size:14px;}
+  .admin-meta{font-size:12px;color:var(--muted);}
+  .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+  .status-dot.ok{background:var(--sage);}
+  .status-dot.warn{background:var(--copper);}
+
+  /* NAV */
+  .bottomnav{display:flex;background:var(--chrome);padding:12px 4px 18px;flex-shrink:0;}
+  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:#8A8072;}
+  .navitem.active{color:#fff;}
+  .navitem svg{width:20px;height:20px;}
+  .navitem span{font-size:10px;}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="statusbar">
+    <div class="brand">Kaapi Junction — 4 outlets</div>
+    <div class="row">
+      <div>
+        <div class="greet">Good evening, Karan</div>
+        <span class="rolepill">Owner</span>
+      </div>
+      <div class="avatar" onclick="showScreen('screen-profile')">K</div>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div class="screen active" id="screen-home">
+    <div class="voice-tile ask">
+      <button class="mic-btn" onclick="alert('Listening... ask anything, across all outlets.')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+      </button>
+      <div class="vlabel">Ask</div>
+      <div class="vsub">Ask across all outlets</div>
+    </div>
+    <div class="voice-tile tell">
+      <button class="mic-btn" onclick="alert('Listening... say anything, or attach a photo.')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#B5651D" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+      </button>
+      <div class="vlabel">Tell</div>
+      <div class="vsub">Log anything — voice or photo</div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div class="section-label" style="margin:0;">Cross-outlet signals</div>
+      <span class="link" onclick="showScreen('screen-tasks')">Review</span>
+    </div>
+    <div class="card">
+      <div class="signal-row">
+        <div class="signal-text">Milk steaming technique flagged at 3 outlets this month</div>
+        <div class="signal-meta">Indiranagar, Koramangala, Whitefield — pattern, not yet brand-wide</div>
+      </div>
+      <div class="signal-row">
+        <div class="signal-text">2 outlets short on Biller/Cashier this week</div>
+        <div class="signal-meta">Indiranagar, HSR — from outlet org charts</div>
+      </div>
+    </div>
+    <div class="hint">Only patterns already approved at outlet level surface here</div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="screen" id="screen-tasks">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h2 class="serif" style="font-size:19px;">Tasks</h2>
+      <button class="btn btn-copper btn-sm" onclick="toggleNewTask()">+ New task</button>
+    </div>
+    <div class="card" id="new-task-card" style="display:none;margin-bottom:14px;">
+      <input type="text" id="new-task-input" placeholder="What needs doing?" style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;font-family:'Work Sans';outline:none;margin-bottom:8px;">
+      <div class="kmeta">Assign to: outlet manager, by outlet</div>
+      <button class="btn btn-copper btn-sm" style="margin-top:8px;" onclick="toggleNewTask()">Add</button>
+    </div>
+
+    <div class="kanban-col">
+      <div class="kanban-head"><h3>Brand patterns — to decide</h3><span class="kanban-count">2</span></div>
+
+      <div class="kcard decide">
+        <span class="ktype kt-brand">Cross-outlet pattern</span>
+        <div class="ktitle">Milk steaming technique — flagged independently at 3 outlets</div>
+        <div class="kmeta">
+          <span class="outlet-tag">Indiranagar</span>
+          <span class="outlet-tag">Koramangala</span>
+          <span class="outlet-tag">Whitefield</span>
+        </div>
+        <div class="proposed-box"><textarea>Add to brand training curriculum: steaming technique refresher module, mandatory for all new hires.</textarea></div>
+        <div class="kmeta" style="margin-bottom:8px;">Each outlet already approved this locally — decide if it becomes brand-wide</div>
+        <div class="row2">
+          <button class="btn btn-ghost btn-sm" onclick="moveDone(this)">Keep outlet-level</button>
+          <button class="btn btn-copper btn-sm" onclick="moveDone(this)">Make brand standard</button>
+        </div>
+      </div>
+
+      <div class="kcard decide">
+        <span class="ktype kt-brand">Cross-outlet pattern</span>
+        <div class="ktitle">Grinder calibration drift — flagged at 2 outlets on the same machine model</div>
+        <div class="kmeta">
+          <span class="outlet-tag">HSR</span>
+          <span class="outlet-tag">Whitefield</span>
+        </div>
+        <div class="proposed-box"><textarea placeholder="Edit before deciding..."></textarea></div>
+        <div class="row2">
+          <button class="btn btn-ghost btn-sm" onclick="moveDone(this)">Keep outlet-level</button>
+          <button class="btn btn-copper btn-sm" onclick="moveDone(this)">Make brand standard</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="kanban-col">
+      <div class="kanban-head"><h3>To complete</h3><span class="kanban-count">1</span></div>
+      <div class="kcard do">
+        <span class="ktype kt-task">Task</span>
+        <div class="ktitle">Review Indiranagar's FSSAI renewal before it lapses</div>
+        <div class="kmeta">From compliance status report</div>
+        <button class="btn btn-sage btn-sm" onclick="moveDone(this)">Mark done</button>
+      </div>
+    </div>
+
+    <div class="kanban-col">
+      <div class="kanban-head"><h3>Done</h3><span class="kanban-count" id="done-count">1</span></div>
+      <div id="done-list">
+        <div class="kcard do kdone">
+          <span class="ktype kt-brand">Cross-outlet pattern</span>
+          <div class="ktitle">Cold brew ratio — made brand standard</div>
+          <div class="kmeta">Applied to all 4 outlets · 2 Sep</div>
+          <span class="archive-link" onclick="this.closest('.kcard').remove()">Archive</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHIFT -->
+  <div class="screen" id="screen-shift">
+    <h2 class="serif" style="font-size:19px;margin-bottom:12px;">Shift — all outlets</h2>
+    <div class="weekstrip">
+      <div class="daychip"><div class="d">Mon</div><div class="n">1</div></div>
+      <div class="daychip"><div class="d">Tue</div><div class="n">2</div></div>
+      <div class="daychip"><div class="d">Wed</div><div class="n">3</div></div>
+      <div class="daychip today"><div class="d">Thu</div><div class="n">4</div></div>
+      <div class="daychip"><div class="d">Fri</div><div class="n">5</div></div>
+      <div class="daychip"><div class="d">Sat</div><div class="n">6</div></div>
+      <div class="daychip"><div class="d">Sun</div><div class="n">7</div></div>
+    </div>
+
+    <div class="outlet-summary-card">
+      <div class="outlet-summary-name">Indiranagar</div>
+      <div class="outlet-shift-row"><span>Priya — Outlet Manager</span><span class="sub">10:00 AM – 8:00 PM</span></div>
+      <div class="outlet-shift-row"><span>Biller / Cashier</span><span class="vacancy">Vacant tonight</span></div>
+    </div>
+    <div class="outlet-summary-card">
+      <div class="outlet-summary-name">Koramangala</div>
+      <div class="outlet-shift-row"><span>Fully staffed</span><span class="sub">4 on shift</span></div>
+    </div>
+    <div class="outlet-summary-card">
+      <div class="outlet-summary-name">HSR</div>
+      <div class="outlet-shift-row"><span>Fully staffed</span><span class="sub">3 on shift</span></div>
+    </div>
+    <div class="outlet-summary-card">
+      <div class="outlet-summary-name">Whitefield</div>
+      <div class="outlet-shift-row"><span>Fully staffed</span><span class="sub">4 on shift</span></div>
+    </div>
+    <div class="hint">Read-only here. Month view and per-outlet detail — on the web app</div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="screen" id="screen-reports">
+    <h2 class="serif" style="font-size:19px;margin-bottom:12px;">Reports</h2>
+    <div class="rtabs">
+      <div class="rtab on" onclick="setRtab(this,'insights')">Insights</div>
+      <div class="rtab" onclick="setRtab(this,'mine')">My reports</div>
+      <div class="rtab" onclick="setRtab(this,'org')">Org reports</div>
+    </div>
+
+    <div id="rtab-insights">
+      <div class="insight-card">
+        <div class="insight-src">CROSS-OUTLET · WASTE COMPARISON</div>
+        <div class="insight-text">Whitefield's milk wastage is 2.3x the brand average this month</div>
+        <div class="actionable-row">
+          <span class="actionable-text">Flag to Whitefield's Outlet Manager for review</span>
+          <button class="btn btn-copper btn-sm" onclick="actionInsight(this)">Create task</button>
+        </div>
+        <span class="data-toggle" onclick="toggleData(this)">Compare outlets</span>
+        <div class="data-view">
+          <div class="compare-row"><span>Whitefield</span><span class="compare-val">4.6 L / week</span></div>
+          <div class="compare-row"><span>Indiranagar</span><span class="compare-val">2.0 L / week</span></div>
+          <div class="compare-row"><span>Koramangala</span><span class="compare-val">1.8 L / week</span></div>
+          <div class="compare-row"><span>HSR</span><span class="compare-val">1.9 L / week</span></div>
+        </div>
+      </div>
+
+      <div class="insight-card">
+        <div class="insight-src">CROSS-OUTLET · KNOWLEDGE GAPS</div>
+        <div class="insight-text">5 knowledge gaps logged brand-wide this month, 3 of them menu-related</div>
+        <div class="actionable-row">
+          <span class="actionable-text">Consider a brand-wide menu refresher</span>
+          <button class="btn btn-copper btn-sm" onclick="actionInsight(this)">Create task</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="rtab-mine" style="display:none;">
+      <div class="insight-card">
+        <div class="report-title">Outlet comparison — waste</div>
+        <div class="report-period">Custom · built by you · monthly</div>
+        <div class="insight-text">Ranks all outlets by wastage as % of sales</div>
+      </div>
+      <button class="btn btn-ghost">+ Build custom report</button>
+    </div>
+
+    <div id="rtab-org" style="display:none;">
+      <div class="insight-card">
+        <div class="report-title">Brand training completion</div>
+        <div class="report-period">Standard template · monthly</div>
+        <div class="insight-text">Training status across all outlets and roles</div>
+      </div>
+      <div class="insight-card">
+        <div class="report-title">Compliance status — all outlets</div>
+        <div class="report-period">Standard template · always current</div>
+        <div class="insight-text">Every outlet's upcoming and overdue compliance items</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE / BRAND ADMIN -->
+  <div class="screen" id="screen-profile">
+    <div class="profile-header">
+      <div class="profile-avatar">K</div>
+      <div><div class="profile-name">Karan Mehta</div><div class="profile-role">Owner</div></div>
+    </div>
+
+    <div class="section-label">Outlets</div>
+    <div class="card">
+      <div class="admin-row"><div><span class="status-dot ok"></span><span class="admin-title">Indiranagar</span></div><span class="admin-meta">1 vacancy tonight</span></div>
+      <div class="admin-row"><div><span class="status-dot ok"></span><span class="admin-title">Koramangala</span></div><span class="admin-meta">Fully staffed</span></div>
+      <div class="admin-row"><div><span class="status-dot ok"></span><span class="admin-title">HSR</span></div><span class="admin-meta">Fully staffed</span></div>
+      <div class="admin-row"><div><span class="status-dot warn"></span><span class="admin-title">Whitefield</span></div><span class="admin-meta">Waste flagged this month</span></div>
+      <div class="admin-row" style="cursor:pointer;"><span class="link">+ Add outlet</span></div>
+    </div>
+
+    <div class="section-label">Brand templates</div>
+    <div class="card">
+      <div class="admin-row"><span class="admin-title">Base recipes</span><span class="admin-meta">Owned by Brand Head Chef</span></div>
+      <div class="admin-row"><span class="admin-title">SOP templates</span><span class="admin-meta">14 brand-wide</span></div>
+      <div class="admin-row"><span class="admin-title">Training curriculum</span><span class="admin-meta">8 standard modules</span></div>
+    </div>
+
+    <div class="hint">Bulk edits, template authoring, and full outlet detail — on the web app</div>
+  </div>
+
+  <div class="bottomnav">
+    <div class="navitem active" id="nav-home" onclick="showScreen('screen-home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Home</span>
+    </div>
+    <div class="navitem" id="nav-tasks" onclick="showScreen('screen-tasks')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><polyline points="8 12 11 15 16 9"/></svg><span>Tasks</span>
+    </div>
+    <div class="navitem" id="nav-shift" onclick="showScreen('screen-shift')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg><span>Shift</span>
+    </div>
+    <div class="navitem" id="nav-reports" onclick="showScreen('screen-reports')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 3 5-8"/></svg><span>Reports</span>
+    </div>
+    <div class="navitem" id="nav-profile" onclick="showScreen('screen-profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span>Profile</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.navitem').forEach(n => n.classList.remove('active'));
+    if(id==='screen-home') document.getElementById('nav-home').classList.add('active');
+    if(id==='screen-tasks') document.getElementById('nav-tasks').classList.add('active');
+    if(id==='screen-shift') document.getElementById('nav-shift').classList.add('active');
+    if(id==='screen-reports') document.getElementById('nav-reports').classList.add('active');
+    if(id==='screen-profile') document.getElementById('nav-profile').classList.add('active');
+  }
+
+  function toggleNewTask(){
+    var c = document.getElementById('new-task-card');
+    c.style.display = c.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function moveDone(btn){
+    var card = btn.closest('.kcard');
+    card.classList.add('kdone');
+    card.classList.remove('decide');
+    var actions = card.querySelector('.row2') || btn;
+    var doneLabel = document.createElement('span');
+    doneLabel.className = 'archive-link';
+    doneLabel.textContent = 'Archive';
+    doneLabel.onclick = function(){ card.remove(); };
+    if(actions.classList && actions.classList.contains('row2')) actions.replaceWith(doneLabel);
+    else btn.replaceWith(doneLabel);
+    document.getElementById('done-list').appendChild(card);
+    document.getElementById('done-count').textContent = document.querySelectorAll('#done-list .kcard').length;
+  }
+
+  function setRtab(el, tab){
+    document.querySelectorAll('.rtab').forEach(t => t.classList.remove('on'));
+    el.classList.add('on');
+    document.getElementById('rtab-insights').style.display = tab === 'insights' ? 'block' : 'none';
+    document.getElementById('rtab-mine').style.display = tab === 'mine' ? 'block' : 'none';
+    document.getElementById('rtab-org').style.display = tab === 'org' ? 'block' : 'none';
+  }
+  function toggleData(el){ el.nextElementSibling.classList.toggle('show'); }
+  function actionInsight(btn){
+    var row = btn.closest('.actionable-row');
+    var closedLabel = document.createElement('span');
+    closedLabel.className = 'link';
+    closedLabel.textContent = 'Task created — choose who it\u2019s for';
+    row.replaceWith(closedLabel);
+  }
+</script>
+
+</body>
+</html>
