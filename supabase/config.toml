@@ -1,0 +1,35 @@
+# Hand-written starter config — if your Supabase CLI version complains about
+# missing/renamed keys, run `supabase init` in a scratch dir and diff against
+# this instead of debugging by hand.
+
+project_id = "outlet-brain"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+enable_signup = true
+
+# Phone OTP is the chosen auth strategy (staff log in with phone + OTP).
+# Locally, the CLI's test OTP (123456) works without a real SMS provider.
+# In production (Supabase dashboard → Authentication → Providers → Phone),
+# you'll need to configure a real SMS provider (Twilio, MessageBird, Vonage).
+[auth.sms]
+enable_signup = true
+enable_confirmations = false
