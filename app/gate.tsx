@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { unlock } from "./actions";
 
 /**
+ * ⚠️ TEMPORARY (pre-auth stopgap) — delete this component once real
+ * per-user login exists. See lib/access.ts for the full removal checklist.
+ *
  * The password screen itself is not the security boundary — it's just the
  * UI. The real check is requireAccess() inside every Server Action. This
  * only exists so a legitimate visitor doesn't have to know a magic cookie

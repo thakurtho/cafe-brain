@@ -8,6 +8,21 @@ import { TELL_SYSTEM_PROMPT, CLASSIFY_TOOL, type ClassifyTellInput } from "@/lib
 import { ASK_SYSTEM_PROMPT } from "@/lib/ask-prompt";
 import { ACCESS_COOKIE, requireAccess } from "@/lib/access";
 
+// ⚠️ This file has THREE pre-auth stopgaps, all temporary, all removable
+// only once real per-user login exists:
+//   1. requireAccess() / unlock() below — one shared password for every
+//      visitor instead of real login. See lib/access.ts.
+//   2. ACTING_AS_PHONE further down — every Tell is attributed to one
+//      hardcoded seeded user instead of whoever's actually signed in.
+//   3. createAdminClient() (service role) throughout this file — RLS is
+//      bypassed entirely and outlet-scoping is done by hand in each query,
+//      because there's no authenticated session for RLS to key off yet.
+// When real auth lands: delete requireAccess/unlock and lib/access.ts;
+// thread the real signed-in user in place of ACTING_AS_PHONE; and switch
+// these Server Actions to lib/supabase/server.ts's cookie-aware client so
+// RLS (already fully written — see the migrations' RLS file) does the
+// access control instead of manual outlet_id filtering.
+
 export async function unlock(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   const entered = String(formData.get("code") ?? "");
   const code = process.env.SITE_ACCESS_CODE;
@@ -29,8 +44,8 @@ export async function unlock(formData: FormData): Promise<{ ok: boolean; error?:
   return { ok: true };
 }
 
-// Hardcoded "acting as" staffer for every Tell submission — there's no
-// login yet. Aman Rawat (Captain / Senior Barista), from the seed data.
+// ⚠️ TEMPORARY (pre-auth stopgap #2 — see file header). Aman Rawat
+// (Captain / Senior Barista), from the seed data.
 const ACTING_AS_PHONE = "+919876510002";
 
 export type TellResult = {
