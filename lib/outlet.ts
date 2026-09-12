@@ -8,6 +8,21 @@ import { createAdminClient } from "./supabase/admin";
  */
 const MUSAFIR_OUTLET_NAME = "Musafir Cafe — Mussoorie";
 
+/**
+ * Host only, never the key — lets a mismatched-project misconfiguration
+ * (right key shape, wrong project) be diagnosed straight from a log line
+ * instead of manually comparing dashboard values.
+ */
+function currentSupabaseHost(): string {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) return "(NEXT_PUBLIC_SUPABASE_URL not set)";
+  try {
+    return new URL(url).host;
+  } catch {
+    return `(invalid NEXT_PUBLIC_SUPABASE_URL: "${url}")`;
+  }
+}
+
 export async function getMusafirOutletId(): Promise<string> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -18,7 +33,10 @@ export async function getMusafirOutletId(): Promise<string> {
 
   if (error || !data) {
     throw new Error(
-      `Could not find outlet "${MUSAFIR_OUTLET_NAME}" — did supabase/seed/seed.sql run against this project?`
+      `Could not find outlet "${MUSAFIR_OUTLET_NAME}" in Supabase project ${currentSupabaseHost()} — ` +
+        `did supabase/seed/seed.sql run against THIS project? Check that ` +
+        `NEXT_PUBLIC_SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY point to the same ` +
+        `project you seeded, not a different one.`
     );
   }
   return data.id;
@@ -29,7 +47,9 @@ export async function getUserIdByPhone(phone: string): Promise<string> {
   const { data, error } = await supabase.from("users").select("id").eq("phone", phone).single();
 
   if (error || !data) {
-    throw new Error(`Could not find a user with phone ${phone} — did the seed run?`);
+    throw new Error(
+      `Could not find a user with phone ${phone} in Supabase project ${currentSupabaseHost()} — did the seed run against THIS project?`
+    );
   }
   return data.id;
 }
