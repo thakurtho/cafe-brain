@@ -1,10 +1,33 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createAnthropicClient, CLAUDE_MODEL } from "@/lib/anthropic";
 import { getMusafirOutletId, getUserIdByPhone } from "@/lib/outlet";
 import { TELL_SYSTEM_PROMPT, CLASSIFY_TOOL, type ClassifyTellInput } from "@/lib/tell-classifier";
 import { ASK_SYSTEM_PROMPT } from "@/lib/ask-prompt";
+import { ACCESS_COOKIE, requireAccess } from "@/lib/access";
+
+export async function unlock(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  const entered = String(formData.get("code") ?? "");
+  const code = process.env.SITE_ACCESS_CODE;
+
+  if (!code) {
+    // Nothing configured. isUnlocked() already treats this as open in dev
+    // and locked in production, so there's nothing to check against here.
+    return { ok: process.env.NODE_ENV !== "production" };
+  }
+  if (entered !== code) return { ok: false, error: "Wrong code." };
+
+  cookies().set(ACCESS_COOKIE, code, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7, // 1 week
+  });
+  return { ok: true };
+}
 
 // Hardcoded "acting as" staffer for every Tell submission — there's no
 // login yet. Aman Rawat (Captain / Senior Barista), from the seed data.
@@ -19,6 +42,7 @@ export type TellResult = {
 };
 
 export async function submitTell(formData: FormData): Promise<TellResult> {
+  requireAccess();
   const text = String(formData.get("text") ?? "").trim();
   if (!text) throw new Error("Type something to submit first.");
 
@@ -217,6 +241,7 @@ export async function submitTell(formData: FormData): Promise<TellResult> {
 export type AskResult = { answer: string };
 
 export async function submitAsk(formData: FormData): Promise<AskResult> {
+  requireAccess();
   const question = String(formData.get("question") ?? "").trim();
   if (!question) throw new Error("Type a question first.");
 
