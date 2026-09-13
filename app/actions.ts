@@ -9,7 +9,9 @@ import { ASK_SYSTEM_PROMPT } from "@/lib/ask-prompt";
 import { ACCESS_COOKIE, requireAccess } from "@/lib/access";
 
 // ⚠️ This file has THREE pre-auth stopgaps, all temporary, all removable
-// only once real per-user login exists:
+// only once real per-user login exists (a fourth — a client-picked
+// "acting as" user, replacing ACTING_AS_PHONE's single hardcoded person —
+// lives in app/tasks/actions.ts for the Tasks feature):
 //   1. requireAccess() / unlock() below — one shared password for every
 //      visitor instead of real login. See lib/access.ts.
 //   2. ACTING_AS_PHONE further down — every Tell is attributed to one
@@ -18,10 +20,11 @@ import { ACCESS_COOKIE, requireAccess } from "@/lib/access";
 //      bypassed entirely and outlet-scoping is done by hand in each query,
 //      because there's no authenticated session for RLS to key off yet.
 // When real auth lands: delete requireAccess/unlock and lib/access.ts;
-// thread the real signed-in user in place of ACTING_AS_PHONE; and switch
-// these Server Actions to lib/supabase/server.ts's cookie-aware client so
-// RLS (already fully written — see the migrations' RLS file) does the
-// access control instead of manual outlet_id filtering.
+// thread the real signed-in user in place of ACTING_AS_PHONE (and Tasks'
+// acting-as toggle); and switch these Server Actions to
+// lib/supabase/server.ts's cookie-aware client so RLS (already fully
+// written — see the migrations' RLS file) does the access control instead
+// of manual outlet_id filtering.
 
 export async function unlock(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   const entered = String(formData.get("code") ?? "");

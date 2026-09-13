@@ -7,6 +7,9 @@ import { MicButton } from "./mic-button";
 export function AskTellApp() {
   return (
     <main style={{ fontFamily: "sans-serif", padding: "2rem", maxWidth: 640 }}>
+      <p>
+        <a href="/tasks">Tasks →</a>
+      </p>
       <h1>Outlet Brain — Ask / Tell test harness</h1>
       <p>
         No user auth. Every Tell is logged as Aman Rawat. Reads/writes go straight to the seeded
