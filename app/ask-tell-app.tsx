@@ -3,13 +3,12 @@
 import { useState, useTransition } from "react";
 import { submitTell, submitAsk, type TellResult, type AskResult } from "./actions";
 import { MicButton } from "./mic-button";
+import { Nav } from "./nav";
 
 export function AskTellApp() {
   return (
     <main style={{ fontFamily: "sans-serif", padding: "2rem", maxWidth: 640 }}>
-      <p>
-        <a href="/tasks">Tasks →</a>
-      </p>
+      <Nav current="ask-tell" />
       <h1>Outlet Brain — Ask / Tell test harness</h1>
       <p>
         No user auth. Every Tell is logged as Aman Rawat. Reads/writes go straight to the seeded

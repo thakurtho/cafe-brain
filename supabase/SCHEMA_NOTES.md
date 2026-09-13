@@ -88,6 +88,46 @@ silently — flagging it all here for the table-structure sanity check.
   sends it back to "To complete" approved for its new holder; a manager
   actively picking an assignee is treated as the approval, same logic as
   approving a pattern suggestion.
+- **Drill-down conversations use the existing capture layer, no new
+  tables** (migration `20260914100000` has nothing to add here beyond a
+  comment). Confirmed first that Ask and Tell were both strictly one-shot
+  — Tell closes its session immediately after classifying; Ask never even
+  opens one. A drill-down is just a `sessions` row that stays `'open'`
+  across multiple exchanges instead, linked to whatever it's about via
+  `entity_links` (`source_type = 'session'`, `entity_type`/`entity_id` =
+  the pattern or task) — `entity_links` was already built for exactly this
+  ("single index for everything about X") and had never been used by
+  anything until now. Only wired up for patterns and tasks, the only two
+  entity types with real cards anywhere in this app; observations and
+  incidents don't have a list view yet, so there's nowhere to attach a
+  "discuss this" button to them.
+- **`broadcasts` / `broadcast_acknowledgements`** (migration
+  `20260914100000`) — a one-way manager message, optionally scoped to one
+  `access_tier` (null = everyone). Targeting by `access_tier` rather than
+  the free-text `role` column for the same reason `report_definitions
+  .recipient_role` does — it's the one structured, reliable grouping
+  already used for permission checks elsewhere. Acknowledgement tracking
+  only meaningfully applies to `important` broadcasts, but isn't
+  restricted to those at the schema level.
+- **`shift_swap_requests`**, **`shift_swap_status` enum** (migration
+  `20260914100000`) — `shift_date`/`start_time`/`end_time` are captured
+  directly on the request (denormalized) rather than requiring a link to a
+  real `scheduled_shifts` row, since nothing in this app has ever created
+  one (`scheduled_shifts` exists in the schema, unused — see below).
+  `scheduled_shift_id` is an optional FK for whenever real shift-scheduling
+  UI exists. A volunteer (`volunteer_id`) is tracked independently of
+  `status` — a request can be pending with or without one, and a manager
+  can approve either way.
+- **Notifications aren't a table.** `app/notifications/data.ts` is a thin
+  aggregator over the other three features' own data (tasks, patterns,
+  compliance, swaps, broadcasts) — no persisted read/unread state, no
+  separate source of truth to keep in sync. Two of its triggers
+  (`knowledge_gaps` open, `shift_openings.discrepancy_flagged`) are queried
+  defensively even though nothing in this app currently writes to either
+  table — no knowledge-gap escalation flow and no shift-handover UI exist
+  yet, so both always come back empty today. Kept so the notification
+  logic is already correct the moment either flow gets built, rather than
+  another thing to remember to wire up later.
 - **`tasks.source_pattern_id` / `tasks.source_incident_id`** (migration
   `20260913170000`) — lineage used to derive task priority (a
   pattern-sourced or safety-incident-sourced task ranks above a plain

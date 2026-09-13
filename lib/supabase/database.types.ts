@@ -42,6 +42,7 @@ export type KnowledgeGapStatus = "open" | "escalated" | "resolved";
 export type ChecklistCategory = "opening" | "closing" | "general";
 export type ProofType = "photo" | "reading" | "voice" | "confirm"; // checklist_items only
 export type TaskProofType = "text" | "photo" | "video" | "audio"; // tasks only — a separate, diverging vocabulary
+export type ShiftSwapStatus = "pending" | "approved" | "rejected";
 export type ComplianceStatus = "upcoming" | "overdue" | "cleared";
 
 export interface Database {
@@ -597,6 +598,48 @@ export interface Database {
         };
         Relationships: [];
       };
+      broadcasts: {
+        Row: {
+          id: string; outlet_id: string; sender_id: string | null; message: string;
+          target_access_tier: AccessTier | null; important: boolean; created_at: string;
+        };
+        Insert: {
+          id?: string; outlet_id: string; sender_id?: string | null; message: string;
+          target_access_tier?: AccessTier | null; important?: boolean; created_at?: string;
+        };
+        Update: {
+          id?: string; outlet_id?: string; sender_id?: string | null; message?: string;
+          target_access_tier?: AccessTier | null; important?: boolean; created_at?: string;
+        };
+        Relationships: [];
+      };
+      broadcast_acknowledgements: {
+        Row: { id: string; broadcast_id: string; user_id: string; acknowledged_at: string };
+        Insert: { id?: string; broadcast_id: string; user_id: string; acknowledged_at?: string };
+        Update: { id?: string; broadcast_id?: string; user_id?: string; acknowledged_at?: string };
+        Relationships: [];
+      };
+      shift_swap_requests: {
+        Row: {
+          id: string; outlet_id: string; requested_by: string; scheduled_shift_id: string | null;
+          shift_date: string; start_time: string; end_time: string; reason: string;
+          volunteer_id: string | null; status: ShiftSwapStatus; approved_by: string | null;
+          approved_at: string | null; created_at: string;
+        };
+        Insert: {
+          id?: string; outlet_id: string; requested_by: string; scheduled_shift_id?: string | null;
+          shift_date: string; start_time: string; end_time: string; reason: string;
+          volunteer_id?: string | null; status?: ShiftSwapStatus; approved_by?: string | null;
+          approved_at?: string | null; created_at?: string;
+        };
+        Update: {
+          id?: string; outlet_id?: string; requested_by?: string; scheduled_shift_id?: string | null;
+          shift_date?: string; start_time?: string; end_time?: string; reason?: string;
+          volunteer_id?: string | null; status?: ShiftSwapStatus; approved_by?: string | null;
+          approved_at?: string | null; created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -626,6 +669,7 @@ export interface Database {
       checklist_category: ChecklistCategory;
       proof_type: ProofType;
       task_proof_type: TaskProofType;
+      shift_swap_status: ShiftSwapStatus;
       compliance_status: ComplianceStatus;
     };
   };

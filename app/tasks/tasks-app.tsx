@@ -18,6 +18,8 @@ import {
 } from "./actions";
 import { APPROVER_TIERS, ADMIN_TIERS } from "./tiers";
 import { MicButton } from "../mic-button";
+import { DrillDownThread } from "../drill-down-thread";
+import { Nav } from "../nav";
 import type { PersonOption, TaskRow, SuggestionRow, ComplianceCardRow } from "./data";
 
 // ⚠️ TEMPORARY (pre-auth stopgap — see app/tasks/actions.ts). This toggle
@@ -63,9 +65,7 @@ export function TasksApp({
 
   return (
     <main style={{ fontFamily: "sans-serif", padding: "2rem", maxWidth: 1000 }}>
-      <p>
-        <a href="/">← Ask / Tell</a>
-      </p>
+      <Nav current="tasks" />
       <h1>Outlet Brain — Tasks test harness</h1>
 
       <section style={{ marginBottom: "1.5rem" }}>
@@ -449,6 +449,7 @@ function SuggestionCard({
         </button>
       </form>
       {error && <p style={{ color: "crimson" }}>{error}</p>}
+      <DrillDownThread entityType="pattern" entityId={s.patternId} actingAsId={actingAsId} />
     </div>
   );
 }
@@ -807,6 +808,7 @@ function TaskCard({
       )}
 
       {error && <p style={{ color: "crimson" }}>{error}</p>}
+      <DrillDownThread entityType="task" entityId={t.id} actingAsId={actingAsId} />
     </div>
   );
 }
