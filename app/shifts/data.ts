@@ -23,7 +23,7 @@ export async function getShiftsPageData(): Promise<{ people: PersonOption[]; req
   const supabase = createAdminClient();
   const outletId = await getMusafirOutletId();
 
-  const [{ data: users }, { data: requestsRaw }] = await Promise.all([
+  const [usersResult, requestsResult] = await Promise.all([
     supabase.from("users").select("id, name, access_tier").eq("outlet_id", outletId),
     supabase
       .from("shift_swap_requests")
@@ -32,6 +32,15 @@ export async function getShiftsPageData(): Promise<{ people: PersonOption[]; req
       .order("created_at", { ascending: false }),
   ]);
 
+  // See app/tasks/data.ts for why this check matters: supabase-js resolves
+  // with { data: null, error } rather than throwing, so a real query
+  // failure (e.g. a migration not yet run) would otherwise silently turn
+  // into an empty list with no error shown anywhere.
+  if (usersResult.error) throw new Error(`Could not load users: ${usersResult.error.message}`);
+  if (requestsResult.error) throw new Error(`Could not load shift swap requests: ${requestsResult.error.message}`);
+
+  const users = usersResult.data;
+  const requestsRaw = requestsResult.data;
   const nameById = new Map((users ?? []).map((u) => [u.id, u.name]));
 
   const requests: SwapRequestRow[] = (requestsRaw ?? []).map((r) => ({

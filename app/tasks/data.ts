@@ -85,11 +85,12 @@ export async function getTasksPageData(): Promise<{
   const supabase = createAdminClient();
   const outletId = await getMusafirOutletId();
 
-  const { data: outlet } = await supabase
+  const { data: outlet, error: outletError } = await supabase
     .from("outlets")
     .select("auto_archive_done_after_days")
     .eq("id", outletId)
     .single();
+  if (outletError) throw new Error(`Could not load outlet settings: ${outletError.message}`);
   const autoArchiveDays = outlet?.auto_archive_done_after_days ?? null;
 
   // Auto-archive sweep — lazy, runs on page load rather than a real
@@ -106,7 +107,7 @@ export async function getTasksPageData(): Promise<{
       .lte("completed_at", cutoff);
   }
 
-  const [{ data: users }, { data: tasksRaw }, { data: patternsRaw }, { data: complianceRaw }] = await Promise.all([
+  const [usersResult, tasksResult, patternsResult, complianceResult] = await Promise.all([
     supabase.from("users").select("id, name, access_tier").eq("outlet_id", outletId),
     supabase
       .from("tasks")
@@ -129,6 +130,21 @@ export async function getTasksPageData(): Promise<{
       .neq("status", "cleared")
       .lte("reminder_date", new Date().toISOString().slice(0, 10)),
   ]);
+
+  // Supabase-js does NOT throw on a query error — it resolves with
+  // { data: null, error }. Destructuring only `data` (as this file used
+  // to) silently turns a real failure (e.g. a column from a migration
+  // that hasn't been run yet) into an empty array, with the Tasks board
+  // just quietly showing nothing and no error anywhere. Surface it.
+  if (usersResult.error) throw new Error(`Could not load users: ${usersResult.error.message}`);
+  if (tasksResult.error) throw new Error(`Could not load tasks: ${tasksResult.error.message}`);
+  if (patternsResult.error) throw new Error(`Could not load patterns: ${patternsResult.error.message}`);
+  if (complianceResult.error) throw new Error(`Could not load compliance reminders: ${complianceResult.error.message}`);
+
+  const users = usersResult.data;
+  const tasksRaw = tasksResult.data;
+  const patternsRaw = patternsResult.data;
+  const complianceRaw = complianceResult.data;
 
   const people = (users ?? []).sort(
     (a, b) => DISPLAY_ORDER.indexOf(a.name) - DISPLAY_ORDER.indexOf(b.name)

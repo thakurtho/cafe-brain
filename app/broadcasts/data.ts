@@ -18,7 +18,7 @@ export async function getBroadcastsPageData(): Promise<{ people: PersonOption[];
   const supabase = createAdminClient();
   const outletId = await getMusafirOutletId();
 
-  const [{ data: users }, { data: broadcastsRaw }] = await Promise.all([
+  const [usersResult, broadcastsResult] = await Promise.all([
     supabase.from("users").select("id, name, access_tier").eq("outlet_id", outletId),
     supabase
       .from("broadcasts")
@@ -27,12 +27,23 @@ export async function getBroadcastsPageData(): Promise<{ people: PersonOption[];
       .order("created_at", { ascending: false }),
   ]);
 
+  // See app/tasks/data.ts for why this check matters: supabase-js resolves
+  // with { data: null, error } rather than throwing, so a real query
+  // failure (e.g. a migration not yet run) would otherwise silently turn
+  // into an empty list with no error shown anywhere.
+  if (usersResult.error) throw new Error(`Could not load users: ${usersResult.error.message}`);
+  if (broadcastsResult.error) throw new Error(`Could not load broadcasts: ${broadcastsResult.error.message}`);
+
+  const users = usersResult.data;
+  const broadcastsRaw = broadcastsResult.data;
   const nameById = new Map((users ?? []).map((u) => [u.id, u.name]));
   const broadcastIds = (broadcastsRaw ?? []).map((b) => b.id);
 
-  const { data: acksRaw } = broadcastIds.length
+  const acksResult = broadcastIds.length
     ? await supabase.from("broadcast_acknowledgements").select("broadcast_id, user_id").in("broadcast_id", broadcastIds)
-    : { data: [] as { broadcast_id: string; user_id: string }[] };
+    : { data: [] as { broadcast_id: string; user_id: string }[], error: null };
+  if (acksResult.error) throw new Error(`Could not load broadcast acknowledgements: ${acksResult.error.message}`);
+  const acksRaw = acksResult.data;
 
   const ackedByBroadcast = new Map<string, string[]>();
   for (const a of acksRaw ?? []) {

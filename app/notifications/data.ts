@@ -33,10 +33,18 @@ export async function getNotificationsPageData() {
   const supabase = createAdminClient();
   const outletId = await getMusafirOutletId();
 
-  const [{ data: knowledgeGapsRaw }, { data: discrepanciesRaw }] = await Promise.all([
+  const [knowledgeGapsResult, discrepanciesResult] = await Promise.all([
     supabase.from("knowledge_gaps").select("id, question_text, escalation_level").eq("outlet_id", outletId).eq("status", "open"),
     supabase.from("shift_openings").select("id, discrepancy_note").eq("outlet_id", outletId).eq("discrepancy_flagged", true),
   ]);
+
+  // See app/tasks/data.ts for why this check matters — a real query
+  // failure otherwise silently turns into an empty list here too.
+  if (knowledgeGapsResult.error) throw new Error(`Could not load knowledge gaps: ${knowledgeGapsResult.error.message}`);
+  if (discrepanciesResult.error) throw new Error(`Could not load shift discrepancies: ${discrepanciesResult.error.message}`);
+
+  const knowledgeGapsRaw = knowledgeGapsResult.data;
+  const discrepanciesRaw = discrepanciesResult.data;
 
   const knowledgeGaps: KnowledgeGapRow[] = (knowledgeGapsRaw ?? []).map((k) => ({
     id: k.id,
