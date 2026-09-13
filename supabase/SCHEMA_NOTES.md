@@ -62,6 +62,32 @@ silently — flagging it all here for the table-structure sanity check.
   in `app/tasks/data.ts` on each Tasks page load rather than a real
   scheduled job, since this app has no cron/background-task
   infrastructure yet. Manual archive continues to work independently.
+- **`tasks.source_compliance_id`** (migration `20260913190000`) —
+  delegating a compliance reminder (`delegateComplianceTask`) creates a
+  real task linked back via this column; completing that task clears the
+  compliance item too (`compliance_reminders.status = 'cleared'`, with
+  `proof_document_url` populated from whatever proof was provided — that
+  column has a CHECK requiring it non-null before 'cleared', so it's
+  always given a real value, never left to satisfy the constraint with a
+  placeholder). Once delegated, the raw compliance card stops appearing in
+  "To complete" — only the task tracks from there. Compliance-sourced
+  tasks always have `requires_proof = true` (compliance clearing
+  structurally requires proof per the original schema doc rule); the admin
+  only picks which of the four proof types.
+- **`tasks.extension_requested` / `requested_due_date` / `extension_reason`**
+  (migration `20260913190000`) — a deadline-extension request, distinct
+  from `'blocked'`: asking for more time isn't the same claim as "I can't
+  do this at all," so it's its own flag rather than overloading blocked
+  status. A requested task keeps its normal `'approved'` status (still
+  workable, still shows in "To complete") while also surfacing in "To
+  approve/review" for a manager's approve/deny decision.
+- **General task reassignment ("delegation")** is a manager action
+  available on any non-terminal task (`updateTaskDetails`, extended with
+  `assignTo` + `description`), not a separate blocked-tasks-only feature —
+  reassigning to the same or a different person after a task is blocked
+  sends it back to "To complete" approved for its new holder; a manager
+  actively picking an assignee is treated as the approval, same logic as
+  approving a pattern suggestion.
 - **`tasks.source_pattern_id` / `tasks.source_incident_id`** (migration
   `20260913170000`) — lineage used to derive task priority (a
   pattern-sourced or safety-incident-sourced task ranks above a plain

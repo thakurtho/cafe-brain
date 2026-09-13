@@ -318,6 +318,8 @@ export interface Database {
           due_date: string; resolution_note: string | null; archived: boolean;
           proof_media_path: string | null; proof_type: TaskProofType | null; proof_value: string | null;
           source_pattern_id: string | null; source_incident_id: string | null; completed_at: string | null;
+          source_compliance_id: string | null; extension_requested: boolean;
+          requested_due_date: string | null; extension_reason: string | null;
           created_at: string;
         };
         Insert: {
@@ -329,6 +331,8 @@ export interface Database {
           due_date: string; resolution_note?: string | null; archived?: boolean;
           proof_media_path?: string | null; proof_type?: TaskProofType | null; proof_value?: string | null;
           source_pattern_id?: string | null; source_incident_id?: string | null; completed_at?: string | null;
+          source_compliance_id?: string | null; extension_requested?: boolean;
+          requested_due_date?: string | null; extension_reason?: string | null;
           created_at?: string;
         };
         Update: {
@@ -340,6 +344,8 @@ export interface Database {
           due_date?: string; resolution_note?: string | null; archived?: boolean;
           proof_media_path?: string | null; proof_type?: TaskProofType | null; proof_value?: string | null;
           source_pattern_id?: string | null; source_incident_id?: string | null; completed_at?: string | null;
+          source_compliance_id?: string | null; extension_requested?: boolean;
+          requested_due_date?: string | null; extension_reason?: string | null;
           created_at?: string;
         };
         Relationships: [];

@@ -112,26 +112,64 @@ export async function approveTask(formData: FormData) {
   if (error) throw new Error(error.message);
 }
 
-// General manager control over any visible task's due date and proof
-// requirement — not just something locked in from whatever the creator
-// originally picked, and not limited to the moment of approval. Every
-// task is manageable the same way regardless of who created it or
-// whether it needed approval at all.
+// General manager control over any visible, non-terminal task: due date,
+// proof requirement, description (scope), and who it's assigned to — one
+// form covers "just tweak a setting" and "delegate this to someone else"
+// (same or different person), since they're the same underlying action.
+// Reassigning away from a blocked or pending state sends it back to
+// "To complete" as approved for the new holder, exactly like a fresh
+// dispatch — a manager actively choosing an assignee IS the approval.
 export async function updateTaskDetails(formData: FormData) {
   requireAccess();
   const taskId = String(formData.get("taskId") ?? "");
   const dueDate = String(formData.get("dueDate") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const assignTo = String(formData.get("assignTo") ?? "").trim();
   const requiresProof = formData.get("requiresProof") === "on";
   const editor = await getActingAsPerson(String(formData.get("actingAsUserId") ?? ""));
   requireApproverTier(editor, "edit tasks");
 
   if (!dueDate) throw new Error("Every task needs a due date.");
+  if (!description) throw new Error("Every task needs a description.");
+  if (!assignTo) throw new Error("Pick who it's for.");
   const proofType = readProofTypeField(formData, requiresProof);
 
   const supabase = createAdminClient();
+  const { data: existing, error: fetchError } = await supabase
+    .from("tasks")
+    .select("status, assigned_to")
+    .eq("id", taskId)
+    .single();
+  if (fetchError || !existing) throw new Error("That task isn't there anymore.");
+
+  const reassigning = assignTo !== existing.assigned_to;
+  const wasBlocked = existing.status === "blocked";
+  // Reassigning (to anyone, including back to the same person after being
+  // blocked) or clearing a blocked task dispatches it fresh into the
+  // to-do queue. Just tweaking a due date on a still-pending task does
+  // NOT grant approval on its own — that stays a separate, deliberate step.
+  const dispatch = reassigning || wasBlocked;
+
   const { error } = await supabase
     .from("tasks")
-    .update({ due_date: dueDate, requires_proof: requiresProof, proof_type: proofType })
+    .update({
+      due_date: dueDate,
+      description,
+      assigned_to: assignTo,
+      requires_proof: requiresProof,
+      proof_type: proofType,
+      ...(dispatch
+        ? {
+            status: "approved",
+            approved_by: editor.id,
+            approved_at: new Date().toISOString(),
+            resolution_note: null,
+            extension_requested: false,
+            requested_due_date: null,
+            extension_reason: null,
+          }
+        : {}),
+    })
     .eq("id", taskId);
   if (error) throw new Error(error.message);
 }
@@ -146,6 +184,7 @@ function classifyUploadedProof(mimeType: string): "photo" | "video" | "audio" | 
 export async function markTaskDone(formData: FormData) {
   requireAccess();
   const taskId = String(formData.get("taskId") ?? "");
+  const actingAsUserId = String(formData.get("actingAsUserId") ?? "");
   const proofValue = String(formData.get("proofValue") ?? "").trim();
   const file = formData.get("proofFile");
   const hasFile = file instanceof File && file.size > 0;
@@ -154,7 +193,7 @@ export async function markTaskDone(formData: FormData) {
 
   const { data: task, error: taskFetchError } = await supabase
     .from("tasks")
-    .select("requires_proof, proof_type")
+    .select("requires_proof, proof_type, source_compliance_id")
     .eq("id", taskId)
     .single();
   if (taskFetchError || !task) throw new Error("That task isn't there anymore.");
@@ -194,12 +233,32 @@ export async function markTaskDone(formData: FormData) {
     })
     .eq("id", taskId);
   if (error) throw new Error(error.message);
+
+  // Completing a compliance-delegated task clears the compliance item too
+  // — closing the task IS closing the compliance requirement, not a
+  // separate step someone has to remember to do in a different screen.
+  if (task.source_compliance_id) {
+    const proofReference =
+      proofMediaPath ?? (task.proof_type === "text" ? proofValue : null) ?? "Cleared via linked task completion";
+    let clearedBy: string | null = null;
+    try {
+      clearedBy = (await getActingAsPerson(actingAsUserId)).id;
+    } catch {
+      // Don't let a missing/invalid actor block the compliance clear —
+      // the task itself already succeeded above.
+    }
+    await supabase
+      .from("compliance_reminders")
+      .update({ status: "cleared", proof_document_url: proofReference, cleared_by: clearedBy })
+      .eq("id", task.source_compliance_id);
+  }
 }
 
 // "Genuinely blocked" branch of the can't-complete conversation (see
-// TaskItem in tasks-app.tsx) — logs why, flags it for a manager by putting
+// TaskCard in tasks-app.tsx) — logs why, flags it for a manager by putting
 // it back in the To approve/review column rather than leaving it to sit
-// unnoticed in Done.
+// unnoticed in Done. A manager resolves it via updateTaskDetails
+// (reassign to the same or a different person) or archiveTask (dismiss).
 export async function markTaskBlocked(formData: FormData) {
   requireAccess();
   const taskId = String(formData.get("taskId") ?? "");
@@ -208,6 +267,66 @@ export async function markTaskBlocked(formData: FormData) {
 
   const supabase = createAdminClient();
   const { error } = await supabase.from("tasks").update({ status: "blocked", resolution_note: note }).eq("id", taskId);
+  if (error) throw new Error(error.message);
+}
+
+// The "I could still finish it" -> still couldn't branch: ask for more
+// time instead of declaring the task fully blocked. Doesn't change status
+// — the task stays visibly "To complete" for its holder — it just also
+// surfaces in "To approve/review" for a manager to decide on.
+export async function requestDeadlineExtension(formData: FormData) {
+  requireAccess();
+  const taskId = String(formData.get("taskId") ?? "");
+  const requestedDueDate = String(formData.get("requestedDueDate") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!requestedDueDate) throw new Error("Pick the date you're asking for.");
+  if (!reason) throw new Error("Say why you need more time.");
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ extension_requested: true, requested_due_date: requestedDueDate, extension_reason: reason })
+    .eq("id", taskId);
+  if (error) throw new Error(error.message);
+}
+
+export async function approveDeadlineExtension(formData: FormData) {
+  requireAccess();
+  const taskId = String(formData.get("taskId") ?? "");
+  const approver = await getActingAsPerson(String(formData.get("actingAsUserId") ?? ""));
+  requireApproverTier(approver, "approve deadline extensions");
+
+  const supabase = createAdminClient();
+  const { data: task, error: fetchError } = await supabase
+    .from("tasks")
+    .select("requested_due_date")
+    .eq("id", taskId)
+    .single();
+  if (fetchError || !task || !task.requested_due_date) throw new Error("No extension request found on that task.");
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({
+      due_date: task.requested_due_date,
+      extension_requested: false,
+      requested_due_date: null,
+      extension_reason: null,
+    })
+    .eq("id", taskId);
+  if (error) throw new Error(error.message);
+}
+
+export async function denyDeadlineExtension(formData: FormData) {
+  requireAccess();
+  const taskId = String(formData.get("taskId") ?? "");
+  const approver = await getActingAsPerson(String(formData.get("actingAsUserId") ?? ""));
+  requireApproverTier(approver, "deny deadline extensions");
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ extension_requested: false, requested_due_date: null, extension_reason: null })
+    .eq("id", taskId);
   if (error) throw new Error(error.message);
 }
 
@@ -243,10 +362,12 @@ export async function approvePatternAsTask(formData: FormData) {
   const patternId = String(formData.get("patternId") ?? "");
   const assignTo = String(formData.get("assignTo") ?? "");
   const dueDate = String(formData.get("dueDate") ?? "").trim();
+  const requiresProof = formData.get("requiresProof") === "on";
   const approver = await getActingAsPerson(String(formData.get("actingAsUserId") ?? ""));
   requireApproverTier(approver, "approve a suggested task");
   if (!assignTo) throw new Error("Pick who it's for.");
   if (!dueDate) throw new Error("Every task needs a due date.");
+  const proofType = readProofTypeField(formData, requiresProof);
 
   const supabase = createAdminClient();
   const outletId = await getMusafirOutletId();
@@ -269,6 +390,8 @@ export async function approvePatternAsTask(formData: FormData) {
     description: pattern.proposed_action,
     assigned_to: assignTo,
     due_date: dueDate,
+    requires_proof: requiresProof,
+    proof_type: proofType,
     status: "approved",
     approved_by: approver.id,
     approved_at: new Date().toISOString(),
@@ -281,4 +404,48 @@ export async function approvePatternAsTask(formData: FormData) {
     .from("patterns")
     .update({ status: "approved", approved_by: approver.id, approved_at: new Date().toISOString() })
     .eq("id", patternId);
+}
+
+// Turns a compliance reminder into a real, closeable, delegable task.
+// Compliance clearing structurally requires proof (schema doc: "Status
+// can't clear without proof_document_url uploaded" — enforced by a CHECK
+// constraint on compliance_reminders), so requires_proof is always true
+// here; the admin only picks which kind. Admin-tier only (outlet_manager/
+// gm_owner), matching compliance's own visibility gating — not the
+// broader shift_manager-and-up set used for ordinary task approval.
+export async function delegateComplianceTask(formData: FormData) {
+  requireAccess();
+  const complianceId = String(formData.get("complianceId") ?? "");
+  const assignTo = String(formData.get("assignTo") ?? "");
+  const dueDate = String(formData.get("dueDate") ?? "").trim();
+  const editor = await getActingAsPerson(String(formData.get("actingAsUserId") ?? ""));
+  requireAdminTier(editor, "delegate a compliance item");
+  if (!assignTo) throw new Error("Pick who it's for.");
+  if (!dueDate) throw new Error("Pick a due date.");
+  const proofType = readProofTypeField(formData, true);
+
+  const supabase = createAdminClient();
+  const outletId = await getMusafirOutletId();
+
+  const { data: compliance, error: complianceError } = await supabase
+    .from("compliance_reminders")
+    .select("id, topic")
+    .eq("id", complianceId)
+    .single();
+  if (complianceError || !compliance) throw new Error("That compliance item isn't there anymore.");
+
+  const { error } = await supabase.from("tasks").insert({
+    outlet_id: outletId,
+    description: compliance.topic,
+    assigned_to: assignTo,
+    due_date: dueDate,
+    status: "approved",
+    approved_by: editor.id,
+    approved_at: new Date().toISOString(),
+    self_assigned: false,
+    requires_proof: true,
+    proof_type: proofType,
+    source_compliance_id: complianceId,
+  });
+  if (error) throw new Error(error.message);
 }

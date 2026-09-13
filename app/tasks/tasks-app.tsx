@@ -8,9 +8,13 @@ import {
   updateTaskDetails,
   markTaskDone,
   markTaskBlocked,
+  requestDeadlineExtension,
+  approveDeadlineExtension,
+  denyDeadlineExtension,
   archiveTask,
   updateAutoArchiveSetting,
   approvePatternAsTask,
+  delegateComplianceTask,
 } from "./actions";
 import { APPROVER_TIERS, ADMIN_TIERS } from "./tiers";
 import { MicButton } from "../mic-button";
@@ -268,7 +272,11 @@ function KanbanBoard({
     ? tasks.filter((t) => filter === "all" || (filter === "mine" ? t.assignedTo === actingAsId : t.assignedTo === filter))
     : tasks.filter((t) => t.assignedTo === actingAsId);
 
-  const toApprove = scoped.filter((t) => t.status === "pending_approval" || t.status === "blocked");
+  // A task needing a manager decision — pending approval, flagged blocked,
+  // or an in-flight extension request — surfaces here regardless of its
+  // primary status. An extension-requested task also still appears in "To
+  // complete" (its holder can keep working it while waiting on a decision).
+  const toApprove = scoped.filter((t) => t.status === "pending_approval" || t.status === "blocked" || t.extensionRequested);
   const toCompleteTasks = scoped.filter((t) => t.status === "approved");
   const done = scoped.filter((t) => t.status === "done" && !t.archived);
   const archived = scoped.filter((t) => t.archived);
@@ -306,7 +314,7 @@ function KanbanBoard({
               <SuggestionCard key={s.patternId} suggestion={s} people={people} actingAsId={actingAsId} />
             ))}
           {toApprove.map((t) => (
-            <TaskCard key={t.id} task={t} actingAsId={actingAsId} isManager={isManager} />
+            <TaskCard key={t.id} task={t} people={people} actingAsId={actingAsId} isManager={isManager} />
           ))}
           {toApprove.length === 0 && !(isManager && suggestions.length > 0) && <Empty />}
         </Column>
@@ -314,9 +322,15 @@ function KanbanBoard({
         <Column title="To complete" count={toCompleteCards.length}>
           {toCompleteCards.map((card) =>
             card.kind === "task" ? (
-              <TaskCard key={card.task.id} task={card.task} actingAsId={actingAsId} isManager={isManager} showPriority />
+              <TaskCard key={card.task.id} task={card.task} people={people} actingAsId={actingAsId} isManager={isManager} showPriority />
             ) : (
-              <ComplianceCard key={card.compliance.id} compliance={card.compliance} />
+              <ComplianceCard
+                key={card.compliance.id}
+                compliance={card.compliance}
+                people={people}
+                actingAsId={actingAsId}
+                isAdmin={isAdmin}
+              />
             )
           )}
           {toCompleteCards.length === 0 && <Empty />}
@@ -324,14 +338,14 @@ function KanbanBoard({
 
         <Column title="Done" count={done.length}>
           {done.map((t) => (
-            <TaskCard key={t.id} task={t} actingAsId={actingAsId} isManager={isManager} />
+            <TaskCard key={t.id} task={t} people={people} actingAsId={actingAsId} isManager={isManager} />
           ))}
           {done.length === 0 && <Empty />}
         </Column>
 
         <Column title="Archived" count={archived.length} muted>
           {archived.map((t) => (
-            <TaskCard key={t.id} task={t} actingAsId={actingAsId} isManager={isManager} />
+            <TaskCard key={t.id} task={t} people={people} actingAsId={actingAsId} isManager={isManager} />
           ))}
           {archived.length === 0 && <Empty />}
         </Column>
@@ -375,6 +389,8 @@ function SuggestionCard({
   const [error, setError] = useState<string | null>(null);
   const [assignTo, setAssignTo] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [requiresProof, setRequiresProof] = useState(false);
+  const [proofType, setProofType] = useState("photo");
 
   return (
     <div style={cardStyle}>
@@ -400,18 +416,35 @@ function SuggestionCard({
       >
         <input type="hidden" name="patternId" value={s.patternId} />
         <input type="hidden" name="actingAsUserId" value={actingAsId} />
-        <select name="assignTo" value={assignTo} onChange={(e) => setAssignTo(e.target.value)}>
-          <option value="" disabled>
-            Assign to…
-          </option>
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
+        <div>
+          <select name="assignTo" value={assignTo} onChange={(e) => setAssignTo(e.target.value)}>
+            <option value="" disabled>
+              Assign to…
             </option>
-          ))}
-        </select>{" "}
-        <input type="date" name="dueDate" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} />{" "}
-        <button type="submit" disabled={pending || !assignTo || !dueDate}>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>{" "}
+          <input type="date" name="dueDate" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+        </div>
+        <div style={{ marginTop: 4 }}>
+          <label>
+            <input type="checkbox" name="requiresProof" checked={requiresProof} onChange={(e) => setRequiresProof(e.target.checked)} />{" "}
+            Requires proof
+          </label>
+          {requiresProof && (
+            <select name="proofType" value={proofType} onChange={(e) => setProofType(e.target.value)} style={{ marginLeft: 8 }}>
+              {Object.entries(PROOF_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        <button type="submit" disabled={pending || !assignTo || !dueDate} style={{ marginTop: 6 }}>
           {pending ? "Approving…" : "Approve as task"}
         </button>
       </form>
@@ -420,7 +453,24 @@ function SuggestionCard({
   );
 }
 
-function ComplianceCard({ compliance: c }: { compliance: ComplianceCardRow }) {
+function ComplianceCard({
+  compliance: c,
+  people,
+  actingAsId,
+  isAdmin,
+}: {
+  compliance: ComplianceCardRow;
+  people: PersonOption[];
+  actingAsId: string;
+  isAdmin: boolean;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [assignTo, setAssignTo] = useState("");
+  const [dueDate, setDueDate] = useState(c.dueDate);
+  const [proofType, setProofType] = useState("photo");
+
   return (
     <div style={cardStyle}>
       <span style={badgeStyle("#F5DAD7", "#A83B32")}>Compliance</span>
@@ -428,20 +478,65 @@ function ComplianceCard({ compliance: c }: { compliance: ComplianceCardRow }) {
       <p style={{ margin: "4px 0", fontSize: "0.9em", color: "#555" }}>
         Due {c.dueDate} · <b>{c.priorityLabel}</b>
       </p>
-      <p style={{ fontSize: "0.85em", color: "#888" }}>No admin UI yet to clear this — update it in Supabase for now.</p>
+      {isAdmin ? (
+        <form
+          action={(formData) => {
+            setError(null);
+            startTransition(async () => {
+              try {
+                await delegateComplianceTask(formData);
+                router.refresh();
+              } catch (e) {
+                setError(e instanceof Error ? e.message : String(e));
+              }
+            });
+          }}
+        >
+          <input type="hidden" name="complianceId" value={c.id} />
+          <input type="hidden" name="actingAsUserId" value={actingAsId} />
+          <select name="assignTo" value={assignTo} onChange={(e) => setAssignTo(e.target.value)}>
+            <option value="" disabled>
+              Delegate to…
+            </option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>{" "}
+          <input type="date" name="dueDate" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} />{" "}
+          <select name="proofType" value={proofType} onChange={(e) => setProofType(e.target.value)}>
+            {Object.entries(PROOF_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <div style={{ marginTop: 4 }}>
+            <button type="submit" disabled={pending || !assignTo || !dueDate}>
+              {pending ? "Delegating…" : "Delegate — becomes a closeable task"}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <p style={{ fontSize: "0.85em", color: "#888" }}>Only an outlet manager can delegate this.</p>
+      )}
+      {error && <p style={{ color: "crimson" }}>{error}</p>}
     </div>
   );
 }
 
-type ConversationStage = "idle" | "asking" | "blocked-reason" | "nudge";
+type ConversationStage = "idle" | "asking" | "blocked-reason" | "nudge" | "requesting-extension";
 
 function TaskCard({
   task: t,
+  people,
   actingAsId,
   isManager,
   showPriority,
 }: {
   task: TaskRow;
+  people: PersonOption[];
   actingAsId: string;
   isManager: boolean;
   showPriority?: boolean;
@@ -454,6 +549,8 @@ function TaskCard({
   const [hasFile, setHasFile] = useState(false);
   const [textProof, setTextProof] = useState("");
   const [editing, setEditing] = useState(false);
+  const [requestedDate, setRequestedDate] = useState("");
+  const [extensionReason, setExtensionReason] = useState("");
 
   function run(formData: FormData, action: (fd: FormData) => Promise<void>) {
     setError(null);
@@ -491,15 +588,51 @@ function TaskCard({
       )}
       {t.proofMediaUrl && <ProofPreview url={t.proofMediaUrl} type={t.proofType} />}
 
+      {t.extensionRequested && (
+        <div style={{ background: "#FBF0DC", padding: 6, margin: "6px 0", fontSize: "0.9em" }}>
+          <p style={{ margin: 0 }}>
+            Requesting extension to <b>{t.requestedDueDate}</b>: &ldquo;{t.extensionReason}&rdquo;
+          </p>
+          {isManager && (
+            <form
+              action={(fd) => {
+                fd.set("taskId", t.id);
+                fd.set("actingAsUserId", actingAsId);
+                run(fd, approveDeadlineExtension);
+              }}
+              style={{ display: "inline" }}
+            >
+              <button type="submit" disabled={pending}>
+                Approve extension
+              </button>
+            </form>
+          )}{" "}
+          {isManager && (
+            <form
+              action={(fd) => {
+                fd.set("taskId", t.id);
+                fd.set("actingAsUserId", actingAsId);
+                run(fd, denyDeadlineExtension);
+              }}
+              style={{ display: "inline" }}
+            >
+              <button type="submit" disabled={pending}>
+                Deny
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+
       {canEdit && !editing && (
         <p>
           <button onClick={() => setEditing(true)} style={{ fontSize: "0.85em" }}>
-            Edit due date / proof
+            Edit / reassign
           </button>
         </p>
       )}
       {canEdit && editing && (
-        <TaskEditForm task={t} actingAsId={actingAsId} onDone={() => setEditing(false)} />
+        <TaskEditForm task={t} people={people} actingAsId={actingAsId} onDone={() => setEditing(false)} />
       )}
 
       {t.status === "pending_approval" &&
@@ -528,7 +661,7 @@ function TaskCard({
             }}
           >
             <button type="submit" disabled={pending}>
-              Archive
+              Archive (dismiss without reassigning)
             </button>
           </form>
         ) : (
@@ -540,6 +673,7 @@ function TaskCard({
           <form
             action={(fd) => {
               fd.set("taskId", t.id);
+              fd.set("actingAsUserId", actingAsId);
               run(fd, markTaskDone);
             }}
           >
@@ -621,8 +755,42 @@ function TaskCard({
           <p style={{ margin: "4px 0", fontStyle: "italic" }}>
             Give it another shot — often these come together faster than expected. Mark done when you&apos;re finished.
           </p>
-          <button onClick={() => setStage("idle")}>Back to task</button>
+          <button onClick={() => setStage("idle")}>Back to task</button>{" "}
+          <button onClick={() => setStage("requesting-extension")}>I still can&apos;t — ask for more time</button>
         </div>
+      )}
+
+      {t.status === "approved" && stage === "requesting-extension" && !t.extensionRequested && (
+        <form
+          action={(fd) => {
+            fd.set("taskId", t.id);
+            fd.set("requestedDueDate", requestedDate);
+            fd.set("reason", extensionReason);
+            run(fd, requestDeadlineExtension);
+            setStage("idle");
+          }}
+        >
+          <label>
+            New due date:{" "}
+            <input type="date" required value={requestedDate} onChange={(e) => setRequestedDate(e.target.value)} />
+          </label>
+          <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+            <textarea
+              rows={2}
+              style={{ width: "100%" }}
+              value={extensionReason}
+              onChange={(e) => setExtensionReason(e.target.value)}
+              placeholder="Why do you need more time?"
+            />
+            <MicButton value={extensionReason} onChange={setExtensionReason} />
+          </div>
+          <button type="submit" disabled={pending || !requestedDate || !extensionReason.trim()} style={{ marginTop: 4 }}>
+            Send request to manager
+          </button>{" "}
+          <button type="button" onClick={() => setStage("nudge")} disabled={pending}>
+            Back
+          </button>
+        </form>
       )}
 
       {t.status === "done" && !t.archived && (
@@ -643,13 +811,27 @@ function TaskCard({
   );
 }
 
-// Manager control over due date / proof requirement — available any time
-// on any not-yet-done task, not just baked in from creation or locked to
-// the moment of approval (point 5/1 from the Sept 13 feedback).
-function TaskEditForm({ task: t, actingAsId, onDone }: { task: TaskRow; actingAsId: string; onDone: () => void }) {
+// Manager control over any non-terminal task: due date, proof, description
+// (scope), and who it's assigned to — one form, since delegating to
+// someone else and just tweaking a setting are the same underlying action.
+// Reassigning (to the same or a different person) after a task is blocked
+// sends it back to "To complete" as approved for its new holder.
+function TaskEditForm({
+  task: t,
+  people,
+  actingAsId,
+  onDone,
+}: {
+  task: TaskRow;
+  people: PersonOption[];
+  actingAsId: string;
+  onDone: () => void;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [description, setDescription] = useState(t.description);
+  const [assignTo, setAssignTo] = useState(t.assignedTo ?? "");
   const [dueDate, setDueDate] = useState(t.dueDate);
   const [requiresProof, setRequiresProof] = useState(t.requiresProof);
   const [proofType, setProofType] = useState(t.proofType ?? "photo");
@@ -672,27 +854,42 @@ function TaskEditForm({ task: t, actingAsId, onDone }: { task: TaskRow; actingAs
     >
       <input type="hidden" name="taskId" value={t.id} />
       <input type="hidden" name="actingAsUserId" value={actingAsId} />
-      <label>
-        Due:{" "}
-        <input type="date" name="dueDate" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-      </label>
-      <label style={{ marginLeft: 8 }}>
-        <input type="checkbox" name="requiresProof" checked={requiresProof} onChange={(e) => setRequiresProof(e.target.checked)} />{" "}
-        Requires proof
-      </label>
-      {requiresProof && (
+      <div style={{ display: "flex", gap: 6 }}>
+        <textarea name="description" rows={2} style={{ width: "100%" }} value={description} onChange={(e) => setDescription(e.target.value)} />
+        <MicButton value={description} onChange={setDescription} />
+      </div>
+      <div style={{ marginTop: 4 }}>
+        <label>
+          Assign to:{" "}
+          <select name="assignTo" value={assignTo} onChange={(e) => setAssignTo(e.target.value)}>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label style={{ marginLeft: 8 }}>
-          <select name="proofType" value={proofType} onChange={(e) => setProofType(e.target.value)}>
+          Due: <input type="date" name="dueDate" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+        </label>
+      </div>
+      <div style={{ marginTop: 4 }}>
+        <label>
+          <input type="checkbox" name="requiresProof" checked={requiresProof} onChange={(e) => setRequiresProof(e.target.checked)} />{" "}
+          Requires proof
+        </label>
+        {requiresProof && (
+          <select name="proofType" value={proofType} onChange={(e) => setProofType(e.target.value)} style={{ marginLeft: 8 }}>
             {Object.entries(PROOF_TYPE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
             ))}
           </select>
-        </label>
-      )}
+        )}
+      </div>
       <div style={{ marginTop: 6 }}>
-        <button type="submit" disabled={pending || !dueDate}>
+        <button type="submit" disabled={pending || !dueDate || !description.trim() || !assignTo}>
           Save
         </button>{" "}
         <button type="button" onClick={onDone} disabled={pending}>

@@ -26,6 +26,10 @@ export type TaskRow = {
   proofMediaUrl: string | null; // live signed URL, regenerated per fetch — not a stored public link
   sourcePatternId: string | null;
   sourceIncidentId: string | null;
+  sourceComplianceId: string | null;
+  extensionRequested: boolean;
+  requestedDueDate: string | null;
+  extensionReason: string | null;
   priorityScore: number;
   priorityLabel: string;
   createdAt: string;
@@ -51,12 +55,15 @@ export type ComplianceCardRow = {
 // than whatever order the DB happens to return.
 const DISPLAY_ORDER = ["Aman Rawat", "Sneha Thapa", "Ritika Bisht"];
 
-function taskPriority(t: { source_incident_id: string | null; source_pattern_id: string | null }): {
-  score: number;
-  label: string;
-} {
-  // Not wired up by any UI yet (see the migration's comment) — kept here
-  // so the ranking is correct the moment something does set it.
+function taskPriority(t: {
+  source_incident_id: string | null;
+  source_pattern_id: string | null;
+  source_compliance_id: string | null;
+}): { score: number; label: string } {
+  // source_incident_id isn't wired up by any UI yet (see the migration's
+  // comment) — kept here so the ranking is correct the moment something
+  // does set it.
+  if (t.source_compliance_id) return { score: 95, label: "High (compliance deadline)" };
   if (t.source_incident_id) return { score: 90, label: "High (from a safety incident)" };
   if (t.source_pattern_id) return { score: 60, label: "Medium (recurring pattern)" };
   return { score: 20, label: "Normal" };
@@ -104,7 +111,7 @@ export async function getTasksPageData(): Promise<{
     supabase
       .from("tasks")
       .select(
-        "id, description, status, assigned_to, created_by, self_assigned, approved_by, due_date, resolution_note, archived, requires_proof, proof_type, proof_value, proof_media_path, source_pattern_id, source_incident_id, completed_at, created_at"
+        "id, description, status, assigned_to, created_by, self_assigned, approved_by, due_date, resolution_note, archived, requires_proof, proof_type, proof_value, proof_media_path, source_pattern_id, source_incident_id, source_compliance_id, extension_requested, requested_due_date, extension_reason, completed_at, created_at"
       )
       .eq("outlet_id", outletId)
       .order("created_at", { ascending: false }),
@@ -157,6 +164,10 @@ export async function getTasksPageData(): Promise<{
         proofMediaUrl,
         sourcePatternId: t.source_pattern_id,
         sourceIncidentId: t.source_incident_id,
+        sourceComplianceId: t.source_compliance_id,
+        extensionRequested: t.extension_requested,
+        requestedDueDate: t.requested_due_date,
+        extensionReason: t.extension_reason,
         priorityScore: priority.score,
         priorityLabel: priority.label,
         createdAt: t.created_at,
@@ -171,19 +182,28 @@ export async function getTasksPageData(): Promise<{
     createdAt: p.created_at,
   }));
 
+  // Don't show a compliance card once it's been delegated into a task —
+  // the task's own lifecycle (and its link back via source_compliance_id)
+  // is the thing to track from here, not a second, redundant raw card.
+  const delegatedComplianceIds = new Set(
+    (tasksRaw ?? []).map((t) => t.source_compliance_id).filter((id): id is string => !!id)
+  );
+
   const today = new Date();
-  const complianceCards: ComplianceCardRow[] = (complianceRaw ?? []).map((c) => {
-    const daysUntilDue = Math.round((new Date(c.due_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    const priority = compliancePriority(daysUntilDue);
-    return {
-      id: c.id,
-      topic: c.topic,
-      dueDate: c.due_date,
-      daysUntilDue,
-      priorityScore: priority.score,
-      priorityLabel: priority.label,
-    };
-  });
+  const complianceCards: ComplianceCardRow[] = (complianceRaw ?? [])
+    .filter((c) => !delegatedComplianceIds.has(c.id))
+    .map((c) => {
+      const daysUntilDue = Math.round((new Date(c.due_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const priority = compliancePriority(daysUntilDue);
+      return {
+        id: c.id,
+        topic: c.topic,
+        dueDate: c.due_date,
+        daysUntilDue,
+        priorityScore: priority.score,
+        priorityLabel: priority.label,
+      };
+    });
 
   return { people, tasks, suggestions, complianceCards, autoArchiveDays };
 }
