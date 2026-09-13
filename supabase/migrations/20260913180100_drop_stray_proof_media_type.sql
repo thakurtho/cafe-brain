@@ -1,0 +1,12 @@
+-- Cleanup for a specific out-of-order migration scenario: if
+-- 20260913160000 (which (re)creates proof_media_type) runs AFTER
+-- 20260913170000 (which drops proof_media_type via DROP COLUMN IF
+-- EXISTS), the column comes back as dead weight — nothing after 170000
+-- ever reads or writes it again; tasks.proof_type is what's actually used.
+--
+-- In the normal/fresh-install migration order this is a harmless no-op
+-- (170000 already dropped it). It only does real work when migrations
+-- were applied out of order, which is exactly what happened on the first
+-- production run of this batch — 150000/150100/160000 were skipped
+-- initially, so 160000 ended up running after 170000 during recovery.
+alter table public.tasks drop column if exists proof_media_type;
