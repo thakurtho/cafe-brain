@@ -21,8 +21,13 @@ export type TaskRow = {
   resolutionNote: string | null;
   archived: boolean;
   requiresProof: boolean;
+  proofType: string | null; // 'photo' | 'reading' | 'voice' | 'confirm'
+  proofValue: string | null;
   proofMediaUrl: string | null; // live signed URL, regenerated per fetch — not a stored public link
-  proofMediaType: string | null; // 'photo' | 'video' | 'audio' | 'doc'
+  sourcePatternId: string | null;
+  sourceIncidentId: string | null;
+  priorityScore: number;
+  priorityLabel: string;
   createdAt: string;
 };
 
@@ -33,27 +38,51 @@ export type SuggestionRow = {
   createdAt: string;
 };
 
+export type ComplianceCardRow = {
+  id: string;
+  topic: string;
+  dueDate: string;
+  daysUntilDue: number;
+  priorityScore: number;
+  priorityLabel: string;
+};
+
 // Display order matching how the people were named in the request, rather
 // than whatever order the DB happens to return.
 const DISPLAY_ORDER = ["Aman Rawat", "Sneha Thapa", "Ritika Bisht"];
+
+function taskPriority(t: { source_incident_id: string | null; source_pattern_id: string | null }): {
+  score: number;
+  label: string;
+} {
+  // Not wired up by any UI yet (see the migration's comment) — kept here
+  // so the ranking is correct the moment something does set it.
+  if (t.source_incident_id) return { score: 90, label: "High (from a safety incident)" };
+  if (t.source_pattern_id) return { score: 60, label: "Medium (recurring pattern)" };
+  return { score: 20, label: "Normal" };
+}
+
+function compliancePriority(daysUntilDue: number): { score: number; label: string } {
+  if (daysUntilDue < 0) return { score: 100, label: `High (overdue by ${-daysUntilDue}d)` };
+  if (daysUntilDue <= 7) return { score: 80, label: `High (due in ${daysUntilDue}d)` };
+  return { score: 40, label: `Medium (due in ${daysUntilDue}d)` };
+}
 
 export async function getTasksPageData(): Promise<{
   people: PersonOption[];
   tasks: TaskRow[];
   suggestions: SuggestionRow[];
+  complianceCards: ComplianceCardRow[];
 }> {
   const supabase = createAdminClient();
   const outletId = await getMusafirOutletId();
 
-  const [{ data: users }, { data: tasksRaw }, { data: patternsRaw }] = await Promise.all([
+  const [{ data: users }, { data: tasksRaw }, { data: patternsRaw }, { data: complianceRaw }] = await Promise.all([
     supabase.from("users").select("id, name, access_tier").eq("outlet_id", outletId),
     supabase
       .from("tasks")
-      // A single string literal, not concatenated — postgrest-js parses
-      // this at the type level to infer the Row shape, and that parsing
-      // only works on a literal string type, not a runtime-built one.
       .select(
-        "id, description, status, assigned_to, created_by, self_assigned, approved_by, due_date, resolution_note, archived, requires_proof, proof_media_path, proof_media_type, created_at"
+        "id, description, status, assigned_to, created_by, self_assigned, approved_by, due_date, resolution_note, archived, requires_proof, proof_type, proof_value, proof_media_path, source_pattern_id, source_incident_id, created_at"
       )
       .eq("outlet_id", outletId)
       .order("created_at", { ascending: false }),
@@ -64,6 +93,12 @@ export async function getTasksPageData(): Promise<{
       .eq("status", "pending")
       .not("proposed_action", "is", null)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("compliance_reminders")
+      .select("id, topic, due_date, reminder_date")
+      .eq("outlet_id", outletId)
+      .neq("status", "cleared")
+      .lte("reminder_date", new Date().toISOString().slice(0, 10)),
   ]);
 
   const people = (users ?? []).sort(
@@ -80,6 +115,7 @@ export async function getTasksPageData(): Promise<{
           .createSignedUrl(t.proof_media_path, SIGNED_URL_TTL_SECONDS);
         proofMediaUrl = signed?.signedUrl ?? null;
       }
+      const priority = taskPriority(t);
       return {
         id: t.id,
         description: t.description,
@@ -94,8 +130,13 @@ export async function getTasksPageData(): Promise<{
         resolutionNote: t.resolution_note,
         archived: t.archived,
         requiresProof: t.requires_proof,
+        proofType: t.proof_type,
+        proofValue: t.proof_value,
         proofMediaUrl,
-        proofMediaType: t.proof_media_type,
+        sourcePatternId: t.source_pattern_id,
+        sourceIncidentId: t.source_incident_id,
+        priorityScore: priority.score,
+        priorityLabel: priority.label,
         createdAt: t.created_at,
       };
     })
@@ -108,5 +149,19 @@ export async function getTasksPageData(): Promise<{
     createdAt: p.created_at,
   }));
 
-  return { people, tasks, suggestions };
+  const today = new Date();
+  const complianceCards: ComplianceCardRow[] = (complianceRaw ?? []).map((c) => {
+    const daysUntilDue = Math.round((new Date(c.due_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const priority = compliancePriority(daysUntilDue);
+    return {
+      id: c.id,
+      topic: c.topic,
+      dueDate: c.due_date,
+      daysUntilDue,
+      priorityScore: priority.score,
+      priorityLabel: priority.label,
+    };
+  });
+
+  return { people, tasks, suggestions, complianceCards };
 }

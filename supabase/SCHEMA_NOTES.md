@@ -27,13 +27,34 @@ silently — flagging it all here for the table-structure sanity check.
   its own file — Postgres won't let a new enum value be used in the same
   transaction that adds it) — distinct from `'rejected'`, which means the
   *approval* was denied, not that someone tried and couldn't finish it.
-- **Task assignment/approval rule, refined twice during building:** self-
-  assigned tasks always skip approval. Originally *any* assignment to
-  someone else required a separate manager approval step, even a
-  manager's own assignment — later changed on request: a manager-tier
-  creator's assignment is now approved immediately (they *are* the
-  approval), while a non-manager assigning someone else still lands
-  `pending_approval` for a manager to clear.
+- **Task assignment/approval rule, flip-flopped twice, now back to the
+  original:** self-assigned tasks always skip approval — unchanged
+  throughout. Assignment to someone else: v1 = always needs manager
+  approval, no exception for who's assigning. v2 = a manager-tier
+  creator's own assignment auto-approves (they *are* the approval). v3
+  (current) = back to v1 — no special-casing by creator's role, ever.
+  Each change was an explicit instruction, not a bug fix; noted here so
+  the history is legible rather than silently overwritten each time.
+- **`tasks.proof_type` / `tasks.proof_value`** (migration `20260913170000`)
+  reuse the `proof_type` enum already defined for `checklist_items`
+  (photo/reading/voice/confirm) instead of classifying an uploaded file's
+  MIME type after the fact — the creator picks what kind of proof a task
+  needs, same model a checklist item would use. Superseded the previous
+  migration's `proof_media_type` text+CHECK column, dropped in the same
+  migration.
+- **`tasks.source_pattern_id` / `tasks.source_incident_id`** (migration
+  `20260913170000`) — lineage used to derive task priority (a
+  pattern-sourced or safety-incident-sourced task ranks above a plain
+  task) rather than a manually-set priority field. `source_pattern_id` is
+  wired up (set when a suggestion is approved into a task);
+  `source_incident_id` is schema-only for now — nothing in this app
+  currently converts an incident into a task, so that priority tier never
+  fires yet, but the column is there for when it does.
+- **Compliance-card visibility gated to `outlet_manager`/`gm_owner`**
+  specifically, not the broader `shift_manager`-and-up set used for task
+  approval — matches the schema doc's screen-access table, where Shift
+  Manager gets Approve/Review but not Outlet Admin. First place in the
+  app that needed two distinct manager-ish tiers rather than one.
 
 ## Added because the dummy data needed it
 - `menu_items.price` — the doc's field list omits it; every Musafir Cafe
