@@ -8,10 +8,15 @@ export type TaskRow = {
   id: string;
   description: string;
   status: string;
+  assignedTo: string | null;
   assignedToName: string | null;
+  createdBy: string | null;
   createdByName: string | null;
   selfAssigned: boolean;
   approvedByName: string | null;
+  dueDate: string | null;
+  resolutionNote: string | null;
+  archived: boolean;
   createdAt: string;
 };
 
@@ -38,7 +43,9 @@ export async function getTasksPageData(): Promise<{
     supabase.from("users").select("id, name, access_tier").eq("outlet_id", outletId),
     supabase
       .from("tasks")
-      .select("id, description, status, assigned_to, created_by, self_assigned, approved_by, created_at")
+      .select(
+        "id, description, status, assigned_to, created_by, self_assigned, approved_by, due_date, resolution_note, archived, created_at"
+      )
       .eq("outlet_id", outletId)
       .order("created_at", { ascending: false }),
     supabase
@@ -59,10 +66,15 @@ export async function getTasksPageData(): Promise<{
     id: t.id,
     description: t.description,
     status: t.status,
+    assignedTo: t.assigned_to,
     assignedToName: t.assigned_to ? nameById.get(t.assigned_to) ?? "Unknown" : null,
+    createdBy: t.created_by,
     createdByName: t.created_by ? nameById.get(t.created_by) ?? "Unknown" : null,
     selfAssigned: t.self_assigned,
     approvedByName: t.approved_by ? nameById.get(t.approved_by) ?? "Unknown" : null,
+    dueDate: t.due_date,
+    resolutionNote: t.resolution_note,
+    archived: t.archived,
     createdAt: t.created_at,
   }));
 

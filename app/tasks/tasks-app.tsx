@@ -2,7 +2,14 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createTask, approveTask, markTaskDone, approvePatternAsTask } from "./actions";
+import {
+  createTask,
+  approveTask,
+  markTaskDone,
+  markTaskBlocked,
+  archiveTask,
+  approvePatternAsTask,
+} from "./actions";
 import type { PersonOption, TaskRow, SuggestionRow } from "./data";
 
 // ⚠️ TEMPORARY (pre-auth stopgap — see app/tasks/actions.ts). This toggle
@@ -33,10 +40,10 @@ export function TasksApp({
   }
 
   const actingAs = people.find((p) => p.id === actingAsId) ?? null;
-  const canApprove = !!actingAs && APPROVER_TIERS.has(actingAs.access_tier);
+  const isManager = !!actingAs && APPROVER_TIERS.has(actingAs.access_tier);
 
   return (
-    <main style={{ fontFamily: "sans-serif", padding: "2rem", maxWidth: 640 }}>
+    <main style={{ fontFamily: "sans-serif", padding: "2rem", maxWidth: 680 }}>
       <p>
         <a href="/">← Ask / Tell</a>
       </p>
@@ -59,11 +66,15 @@ export function TasksApp({
 
       <AddTaskForm people={people} actingAsId={actingAsId} />
 
-      <hr style={{ margin: "2rem 0" }} />
-      <SuggestionsList suggestions={suggestions} actingAsId={actingAsId} canApprove={canApprove} />
+      {isManager && (
+        <>
+          <hr style={{ margin: "2rem 0" }} />
+          <SuggestionsList people={people} suggestions={suggestions} actingAsId={actingAsId} />
+        </>
+      )}
 
       <hr style={{ margin: "2rem 0" }} />
-      <TaskList tasks={tasks} actingAsId={actingAsId} canApprove={canApprove} />
+      <TaskList tasks={tasks} people={people} actingAsId={actingAsId} isManager={isManager} />
     </main>
   );
 }
@@ -73,6 +84,7 @@ function AddTaskForm({ people, actingAsId }: { people: PersonOption[]; actingAsI
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [assignTo, setAssignTo] = useState(actingAsId);
 
   // Keep the "who's it for" default pointing at "myself" as the acting-as
@@ -89,6 +101,7 @@ function AddTaskForm({ people, actingAsId }: { people: PersonOption[]; actingAsI
             try {
               await createTask(formData);
               setDescription("");
+              setDueDate("");
               router.refresh();
             } catch (e) {
               setError(e instanceof Error ? e.message : String(e));
@@ -116,6 +129,10 @@ function AddTaskForm({ people, actingAsId }: { people: PersonOption[]; actingAsI
               ))}
             </select>
           </label>
+          <label style={{ marginLeft: 12 }}>
+            Due:{" "}
+            <input type="date" name="dueDate" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </label>
         </div>
         <button type="submit" disabled={pending} style={{ marginTop: 8 }}>
           {pending ? "Adding…" : "Add task"}
@@ -127,21 +144,23 @@ function AddTaskForm({ people, actingAsId }: { people: PersonOption[]; actingAsI
 }
 
 function SuggestionsList({
+  people,
   suggestions,
   actingAsId,
-  canApprove,
 }: {
+  people: PersonOption[];
   suggestions: SuggestionRow[];
   actingAsId: string;
-  canApprove: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [assignments, setAssignments] = useState<Record<string, string>>({});
 
   return (
     <section>
       <h2>Suggested tasks (from patterns)</h2>
+      <p style={{ fontSize: "0.85em", color: "#888" }}>Manager-only — floor staff don&apos;t see this section.</p>
       {suggestions.length === 0 && <p style={{ color: "#888" }}>None right now.</p>}
       {suggestions.map((s) => (
         <div key={s.patternId} style={{ border: "1px solid #ccc", padding: "0.75rem", marginBottom: "0.5rem" }}>
@@ -166,13 +185,26 @@ function SuggestionsList({
           >
             <input type="hidden" name="patternId" value={s.patternId} />
             <input type="hidden" name="actingAsUserId" value={actingAsId} />
-            {canApprove ? (
-              <button type="submit" disabled={pending}>
-                {pending ? "Approving…" : "Approve as task"}
-              </button>
-            ) : (
-              <span style={{ color: "#888", fontSize: "0.9em" }}>Needs a manager to approve.</span>
-            )}
+            <label>
+              Assign to:{" "}
+              <select
+                name="assignTo"
+                value={assignments[s.patternId] ?? ""}
+                onChange={(e) => setAssignments((a) => ({ ...a, [s.patternId]: e.target.value }))}
+              >
+                <option value="" disabled>
+                  Choose someone…
+                </option>
+                {people.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>{" "}
+            <button type="submit" disabled={pending || !assignments[s.patternId]}>
+              {pending ? "Approving…" : "Approve as task"}
+            </button>
           </form>
         </div>
       ))}
@@ -183,18 +215,99 @@ function SuggestionsList({
 
 function TaskList({
   tasks,
+  people,
   actingAsId,
-  canApprove,
+  isManager,
 }: {
   tasks: TaskRow[];
+  people: PersonOption[];
   actingAsId: string;
-  canApprove: boolean;
+  isManager: boolean;
+}) {
+  // Managers can look at everyone's tasks, filterable by team member.
+  // Non-managers only ever see their own — matches the schema doc's
+  // screen-access table ("Tasks: Own only" for floor staff, "Own + team"
+  // for shift manager and up).
+  const [filter, setFilter] = useState("all");
+  const [showArchived, setShowArchived] = useState(false);
+
+  const scoped = isManager
+    ? tasks.filter((t) => filter === "all" || (filter === "mine" ? t.assignedTo === actingAsId : t.assignedTo === filter))
+    : tasks.filter((t) => t.assignedTo === actingAsId);
+
+  const active = scoped.filter((t) => !t.archived);
+  const archived = scoped.filter((t) => t.archived);
+
+  return (
+    <section>
+      <h2>Tasks</h2>
+      {isManager && (
+        <p>
+          <label>
+            Show:{" "}
+            <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+              <option value="all">All tasks</option>
+              <option value="mine">Mine</option>
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}&apos;s tasks
+                </option>
+              ))}
+            </select>
+          </label>
+        </p>
+      )}
+
+      {active.length === 0 && <p style={{ color: "#888" }}>No tasks here.</p>}
+      {active.map((t) => (
+        <TaskItem key={t.id} task={t} actingAsId={actingAsId} isManager={isManager} />
+      ))}
+
+      {archived.length > 0 && (
+        <>
+          <p>
+            <button onClick={() => setShowArchived((v) => !v)}>
+              {showArchived ? "Hide" : "Show"} archived ({archived.length})
+            </button>
+          </p>
+          {showArchived &&
+            archived.map((t) => (
+              <div key={t.id} style={{ border: "1px solid #eee", padding: "0.75rem", marginBottom: "0.5rem", opacity: 0.6 }}>
+                <p style={{ margin: 0, textDecoration: "line-through" }}>{t.description}</p>
+                <p style={{ margin: "4px 0", fontSize: "0.9em", color: "#888" }}>
+                  {taskTagLabel(t)} · for {t.assignedToName} · <b>{t.status}</b>
+                  {t.resolutionNote ? ` — "${t.resolutionNote}"` : ""}
+                </p>
+              </div>
+            ))}
+        </>
+      )}
+    </section>
+  );
+}
+
+function taskTagLabel(t: TaskRow): string {
+  if (t.selfAssigned) return "Self-added";
+  if (t.createdByName) return `Assigned by ${t.createdByName}`;
+  return "System-assigned";
+}
+
+function TaskItem({
+  task: t,
+  actingAsId,
+  isManager,
+}: {
+  task: TaskRow;
+  actingAsId: string;
+  isManager: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [showBlockedForm, setShowBlockedForm] = useState(false);
+  const [note, setNote] = useState("");
 
-  function run(action: (fd: FormData) => Promise<void>, formData: FormData) {
+  function run(formData: FormData, action: (fd: FormData) => Promise<void>) {
     setError(null);
     startTransition(async () => {
       try {
@@ -207,48 +320,103 @@ function TaskList({
   }
 
   return (
-    <section>
-      <h2>Tasks</h2>
-      {tasks.length === 0 && <p style={{ color: "#888" }}>No tasks yet.</p>}
-      {tasks.map((t) => (
-        <div key={t.id} style={{ border: "1px solid #ccc", padding: "0.75rem", marginBottom: "0.5rem" }}>
-          <p style={{ margin: 0, textDecoration: t.status === "done" ? "line-through" : "none" }}>{t.description}</p>
-          <p style={{ margin: "4px 0", fontSize: "0.9em", color: "#555" }}>
-            {t.selfAssigned ? "Self-added" : `Assigned by ${t.createdByName ?? "unknown"}`}
-            {t.assignedToName ? ` · for ${t.assignedToName}` : ""} · <b>{t.status}</b>
-            {t.approvedByName ? ` (approved by ${t.approvedByName})` : ""}
-          </p>
-          {t.status === "pending_approval" &&
-            (canApprove ? (
-              <form
-                action={(fd) => {
-                  fd.set("taskId", t.id);
-                  fd.set("actingAsUserId", actingAsId);
-                  run(approveTask, fd);
-                }}
-              >
-                <button type="submit" disabled={pending}>
-                  Approve
-                </button>
-              </form>
-            ) : (
-              <span style={{ color: "#888", fontSize: "0.9em" }}>Needs a manager to approve.</span>
-            ))}
-          {t.status === "approved" && (
-            <form
-              action={(fd) => {
-                fd.set("taskId", t.id);
-                run(markTaskDone, fd);
-              }}
-            >
-              <button type="submit" disabled={pending}>
-                Mark done
-              </button>
-            </form>
-          )}
+    <div style={{ border: "1px solid #ccc", padding: "0.75rem", marginBottom: "0.5rem" }}>
+      <p style={{ margin: 0, textDecoration: t.status === "done" ? "line-through" : "none" }}>{t.description}</p>
+      <p style={{ margin: "4px 0", fontSize: "0.9em", color: "#555" }}>
+        {taskTagLabel(t)}
+        {t.assignedToName ? ` · for ${t.assignedToName}` : ""} · <b>{t.status}</b>
+        {t.approvedByName ? ` (approved by ${t.approvedByName})` : ""}
+        {t.dueDate ? ` · due ${t.dueDate}` : ""}
+      </p>
+      {t.resolutionNote && (
+        <p style={{ margin: "4px 0", fontSize: "0.9em", fontStyle: "italic", color: "#555" }}>
+          &ldquo;{t.resolutionNote}&rdquo;
+        </p>
+      )}
+
+      {t.status === "pending_approval" &&
+        (isManager ? (
+          <form
+            action={(fd) => {
+              fd.set("taskId", t.id);
+              fd.set("actingAsUserId", actingAsId);
+              run(fd, approveTask);
+            }}
+          >
+            <button type="submit" disabled={pending}>
+              Approve
+            </button>
+          </form>
+        ) : (
+          <span style={{ color: "#888", fontSize: "0.9em" }}>Needs a manager to approve.</span>
+        ))}
+
+      {t.status === "approved" && !showBlockedForm && (
+        <div>
+          <form
+            action={(fd) => {
+              fd.set("taskId", t.id);
+              fd.set("note", note);
+              run(fd, markTaskDone);
+            }}
+            style={{ display: "inline" }}
+          >
+            <button type="submit" disabled={pending}>
+              Mark done
+            </button>
+          </form>{" "}
+          <button type="button" onClick={() => setShowBlockedForm(true)} disabled={pending}>
+            Couldn&apos;t complete it
+          </button>
         </div>
-      ))}
+      )}
+
+      {t.status === "approved" && showBlockedForm && (
+        <form
+          action={(fd) => {
+            fd.set("taskId", t.id);
+            fd.set("note", note);
+            run(fd, markTaskBlocked);
+            setShowBlockedForm(false);
+          }}
+        >
+          <textarea
+            rows={2}
+            style={{ width: "100%" }}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Why couldn't this be completed? Any comments/observations…"
+          />
+          <button type="submit" disabled={pending || !note.trim()}>
+            Submit
+          </button>{" "}
+          <button
+            type="button"
+            onClick={() => {
+              setShowBlockedForm(false);
+              setNote("");
+            }}
+            disabled={pending}
+          >
+            Cancel
+          </button>
+        </form>
+      )}
+
+      {(t.status === "done" || t.status === "blocked") && (
+        <form
+          action={(fd) => {
+            fd.set("taskId", t.id);
+            run(fd, archiveTask);
+          }}
+        >
+          <button type="submit" disabled={pending}>
+            Archive
+          </button>
+        </form>
+      )}
+
       {error && <p style={{ color: "crimson" }}>{error}</p>}
-    </section>
+    </div>
   );
 }

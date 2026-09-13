@@ -30,7 +30,7 @@ export type SessionInitiator = "BIC" | "UIC";
 export type SessionStatus = "open" | "closed";
 export type MessageSender = "user" | "assistant" | "system";
 export type ClassificationType = "observation" | "fyi" | "task" | "pattern" | "incident" | "none";
-export type TaskStatus = "pending_approval" | "approved" | "in_progress" | "done" | "rejected";
+export type TaskStatus = "pending_approval" | "approved" | "in_progress" | "done" | "rejected" | "blocked";
 export type CompletionMode = "manual" | "auto";
 export type IncidentStatus = "open" | "resolved";
 export type IncidentResponseType = "floor_handles" | "manager_must_engage";
@@ -305,6 +305,7 @@ export interface Database {
           created_by: string | null; self_assigned: boolean; approved_by: string | null; approved_at: string | null;
           handover_reason: string | null; handover_session_id: string | null; requires_proof: boolean;
           completion_mode: CompletionMode; auto_close_entity_type: string | null; auto_close_entity_id: string | null;
+          due_date: string | null; resolution_note: string | null; archived: boolean;
           created_at: string;
         };
         Insert: {
@@ -313,6 +314,7 @@ export interface Database {
           created_by?: string | null; self_assigned?: boolean; approved_by?: string | null; approved_at?: string | null;
           handover_reason?: string | null; handover_session_id?: string | null; requires_proof?: boolean;
           completion_mode?: CompletionMode; auto_close_entity_type?: string | null; auto_close_entity_id?: string | null;
+          due_date?: string | null; resolution_note?: string | null; archived?: boolean;
           created_at?: string;
         };
         Update: {
@@ -321,6 +323,7 @@ export interface Database {
           created_by?: string | null; self_assigned?: boolean; approved_by?: string | null; approved_at?: string | null;
           handover_reason?: string | null; handover_session_id?: string | null; requires_proof?: boolean;
           completion_mode?: CompletionMode; auto_close_entity_type?: string | null; auto_close_entity_id?: string | null;
+          due_date?: string | null; resolution_note?: string | null; archived?: boolean;
           created_at?: string;
         };
         Relationships: [];

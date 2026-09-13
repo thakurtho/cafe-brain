@@ -12,12 +12,12 @@ import { requireAccess } from "@/lib/access";
 // the actor from the session instead of a client-supplied id.
 //
 // Note this file's checks are the REAL boundary, same lesson as the access
-// gate: the UI hides the Approve button from non-managers, but that's only
-// UX. Someone could call approveTask directly with any actingAsUserId, so
-// the access_tier check below — not what button the UI happened to show —
-// is what actually stops a non-manager approval.
+// gate: the UI hides manager-only controls from non-managers, but that's
+// only UX. Someone could call these actions directly with any
+// actingAsUserId, so the access_tier checks below — not what the UI
+// happened to show — are what actually stop a non-manager action.
 
-const APPROVER_TIERS = new Set(["shift_manager", "outlet_manager", "gm_owner"]);
+export const APPROVER_TIERS = new Set(["shift_manager", "outlet_manager", "gm_owner"]);
 
 async function getActingAsPerson(userId: string) {
   if (!userId) throw new Error("Pick who you're acting as first.");
@@ -42,6 +42,7 @@ export async function createTask(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   const actingAsUserId = String(formData.get("actingAsUserId") ?? "");
   const assignTo = String(formData.get("assignTo") ?? "");
+  const dueDate = String(formData.get("dueDate") ?? "").trim();
 
   if (!description) throw new Error("Describe the task first.");
   if (!assignTo) throw new Error("Pick who it's for.");
@@ -51,20 +52,25 @@ export async function createTask(formData: FormData) {
   const outletId = await getMusafirOutletId();
 
   const isSelf = assignTo === creator.id;
+  const creatorIsManager = APPROVER_TIERS.has(creator.access_tier);
 
-  // Self-assigned tasks skip approval (schema doc, section 5: "Self-
-  // assigned tasks skip approval"). Assigning to someone else always
-  // needs manager sign-off — including when a manager is the one doing
-  // the assigning. No special-casing by who's creating it, on purpose.
+  // Self-assigned tasks always skip approval (schema doc, section 5). A
+  // manager-tier creator's own assignment is also approved immediately —
+  // they ARE the approval, a separate pending step would just be
+  // redundant. A non-manager assigning someone else still needs an actual
+  // manager to clear it.
+  const autoApprove = isSelf || creatorIsManager;
+
   const { error } = await supabase.from("tasks").insert({
     outlet_id: outletId,
     description,
     created_by: creator.id,
     assigned_to: assignTo,
     self_assigned: isSelf,
-    status: isSelf ? "approved" : "pending_approval",
-    approved_by: isSelf ? creator.id : null,
-    approved_at: isSelf ? new Date().toISOString() : null,
+    due_date: dueDate || null,
+    status: autoApprove ? "approved" : "pending_approval",
+    approved_by: autoApprove ? creator.id : null,
+    approved_at: autoApprove ? new Date().toISOString() : null,
   });
   if (error) throw new Error(error.message);
 }
@@ -86,16 +92,42 @@ export async function approveTask(formData: FormData) {
 export async function markTaskDone(formData: FormData) {
   requireAccess();
   const taskId = String(formData.get("taskId") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+
   const supabase = createAdminClient();
-  const { error } = await supabase.from("tasks").update({ status: "done" }).eq("id", taskId);
+  const { error } = await supabase
+    .from("tasks")
+    .update({ status: "done", resolution_note: note || null })
+    .eq("id", taskId);
+  if (error) throw new Error(error.message);
+}
+
+export async function markTaskBlocked(formData: FormData) {
+  requireAccess();
+  const taskId = String(formData.get("taskId") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  if (!note) throw new Error("Say why it couldn't be completed.");
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("tasks").update({ status: "blocked", resolution_note: note }).eq("id", taskId);
+  if (error) throw new Error(error.message);
+}
+
+export async function archiveTask(formData: FormData) {
+  requireAccess();
+  const taskId = String(formData.get("taskId") ?? "");
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("tasks").update({ archived: true }).eq("id", taskId);
   if (error) throw new Error(error.message);
 }
 
 export async function approvePatternAsTask(formData: FormData) {
   requireAccess();
   const patternId = String(formData.get("patternId") ?? "");
+  const assignTo = String(formData.get("assignTo") ?? "");
   const approver = await getActingAsPerson(String(formData.get("actingAsUserId") ?? ""));
   requireApproverTier(approver, "approve a suggested task");
+  if (!assignTo) throw new Error("Pick who it's for.");
 
   const supabase = createAdminClient();
   const outletId = await getMusafirOutletId();
@@ -108,12 +140,14 @@ export async function approvePatternAsTask(formData: FormData) {
   if (patternError || !pattern) throw new Error("That suggestion isn't there anymore.");
   if (!pattern.proposed_action) throw new Error("That pattern has no proposed action to turn into a task.");
 
-  // Approving the suggestion IS the approval step — but it still lands
-  // unassigned. Who does it goes to is a separate real choice, never an
-  // assumption (schema doc, section 11), so this doesn't guess an assignee.
+  // Approving the suggestion IS the approval step. created_by is left
+  // null on purpose — this task didn't come from a person, it came from
+  // the system recognizing a pattern; the UI shows that as "System-
+  // assigned" rather than "Assigned by unknown".
   const { error: taskError } = await supabase.from("tasks").insert({
     outlet_id: outletId,
     description: pattern.proposed_action,
+    assigned_to: assignTo,
     status: "approved",
     approved_by: approver.id,
     approved_at: new Date().toISOString(),

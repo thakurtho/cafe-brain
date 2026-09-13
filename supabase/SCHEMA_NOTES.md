@@ -18,6 +18,22 @@ silently — flagging it all here for the table-structure sanity check.
 - **`scheduled_shifts`** table added (referenced by `shift_openings` /
   `shift_handovers` via `scheduled_shift_id`, but never defined in the doc).
   Includes `pos_shift_id` + `synced_at` for the planned PetPooja sync.
+- **`tasks.due_date`, `tasks.resolution_note`, `tasks.archived`** added
+  (migration `20260913150000`) once the Tasks feature needed them: a
+  deadline, a place to record why a task couldn't be completed (or general
+  completion comments), and a soft-archive flag so finished/abandoned
+  tasks can be tucked away without deleting the row.
+- **`task_status` enum gained `'blocked'`** (migration `20260913150100`,
+  its own file — Postgres won't let a new enum value be used in the same
+  transaction that adds it) — distinct from `'rejected'`, which means the
+  *approval* was denied, not that someone tried and couldn't finish it.
+- **Task assignment/approval rule, refined twice during building:** self-
+  assigned tasks always skip approval. Originally *any* assignment to
+  someone else required a separate manager approval step, even a
+  manager's own assignment — later changed on request: a manager-tier
+  creator's assignment is now approved immediately (they *are* the
+  approval), while a non-manager assigning someone else still lands
+  `pending_approval` for a manager to clear.
 
 ## Added because the dummy data needed it
 - `menu_items.price` — the doc's field list omits it; every Musafir Cafe
