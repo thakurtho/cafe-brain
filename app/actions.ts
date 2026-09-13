@@ -176,6 +176,14 @@ export async function submitTell(formData: FormData): Promise<TellResult> {
       // No assignee picker in this thin slice, and the schema doc is
       // explicit that a task's destination is never auto-assigned — so it
       // lands unassigned, pending someone deciding who it's for.
+      //
+      // due_date is now required on every task (Sept 13 Tasks feedback),
+      // but the classifier doesn't infer one from the Tell text — a
+      // Tell-created task gets a flat 3-day-out placeholder rather than
+      // guessing a real deadline. A manager can adjust it from the Tasks
+      // board (updateTaskDetails in app/tasks/actions.ts) once it's
+      // reviewed. Worth revisiting if this matters more than a placeholder.
+      const placeholderDueDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const { data } = await supabase
         .from("tasks")
         .insert({
@@ -185,6 +193,7 @@ export async function submitTell(formData: FormData): Promise<TellResult> {
           status: "pending_approval",
           created_by: userId,
           self_assigned: false,
+          due_date: placeholderDueDate,
         })
         .select()
         .single();

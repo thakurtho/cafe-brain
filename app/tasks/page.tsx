@@ -6,6 +6,14 @@ import { getTasksPageData } from "./data";
 export default async function TasksPage() {
   if (!isUnlocked()) return <Gate />;
 
-  const { people, tasks, suggestions, complianceCards } = await getTasksPageData();
-  return <TasksApp people={people} tasks={tasks} suggestions={suggestions} complianceCards={complianceCards} />;
+  const { people, tasks, suggestions, complianceCards, autoArchiveDays } = await getTasksPageData();
+  return (
+    <TasksApp
+      people={people}
+      tasks={tasks}
+      suggestions={suggestions}
+      complianceCards={complianceCards}
+      autoArchiveDays={autoArchiveDays}
+    />
+  );
 }

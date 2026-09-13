@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import {
   createTask,
   approveTask,
+  updateTaskDetails,
   markTaskDone,
   markTaskBlocked,
   archiveTask,
+  updateAutoArchiveSetting,
   approvePatternAsTask,
 } from "./actions";
 import { APPROVER_TIERS, ADMIN_TIERS } from "./tiers";
+import { MicButton } from "../mic-button";
 import type { PersonOption, TaskRow, SuggestionRow, ComplianceCardRow } from "./data";
 
 // ⚠️ TEMPORARY (pre-auth stopgap — see app/tasks/actions.ts). This toggle
@@ -19,10 +22,10 @@ import type { PersonOption, TaskRow, SuggestionRow, ComplianceCardRow } from "./
 const ACTING_AS_STORAGE_KEY = "outlet-brain-acting-as";
 
 const PROOF_TYPE_LABELS: Record<string, string> = {
+  text: "Text note",
   photo: "Photo",
-  reading: "Reading (a number/value)",
-  voice: "Voice recording",
-  confirm: "Just confirm (no file)",
+  video: "Video",
+  audio: "Audio (voice note)",
 };
 
 export function TasksApp({
@@ -30,11 +33,13 @@ export function TasksApp({
   tasks,
   suggestions,
   complianceCards,
+  autoArchiveDays,
 }: {
   people: PersonOption[];
   tasks: TaskRow[];
   suggestions: SuggestionRow[];
   complianceCards: ComplianceCardRow[];
+  autoArchiveDays: number | null;
 }) {
   const [actingAsId, setActingAsId] = useState(people[0]?.id ?? "");
 
@@ -74,6 +79,8 @@ export function TasksApp({
         ))}
       </section>
 
+      {isAdmin && <AutoArchiveSetting actingAsId={actingAsId} currentDays={autoArchiveDays} />}
+
       <AddTaskForm people={people} actingAsId={actingAsId} />
 
       <hr style={{ margin: "2rem 0" }} />
@@ -87,6 +94,48 @@ export function TasksApp({
         isAdmin={isAdmin}
       />
     </main>
+  );
+}
+
+function AutoArchiveSetting({ actingAsId, currentDays }: { actingAsId: string; currentDays: number | null }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [days, setDays] = useState(currentDays != null ? String(currentDays) : "");
+
+  return (
+    <section style={{ marginBottom: "1.5rem", fontSize: "0.9em", color: "#555" }}>
+      <form
+        action={(formData) => {
+          setError(null);
+          startTransition(async () => {
+            try {
+              await updateAutoArchiveSetting(formData);
+              router.refresh();
+            } catch (e) {
+              setError(e instanceof Error ? e.message : String(e));
+            }
+          });
+        }}
+      >
+        <input type="hidden" name="actingAsUserId" value={actingAsId} />
+        Auto-archive Done tasks after{" "}
+        <input
+          type="number"
+          name="autoArchiveDays"
+          min={1}
+          value={days}
+          onChange={(e) => setDays(e.target.value)}
+          placeholder="off"
+          style={{ width: 60 }}
+        />{" "}
+        days (blank = off, manual archive still works either way){" "}
+        <button type="submit" disabled={pending}>
+          Save
+        </button>
+      </form>
+      {error && <p style={{ color: "crimson" }}>{error}</p>}
+    </section>
   );
 }
 
@@ -124,14 +173,17 @@ function AddTaskForm({ people, actingAsId }: { people: PersonOption[]; actingAsI
         }}
       >
         <input type="hidden" name="actingAsUserId" value={actingAsId} />
-        <textarea
-          name="description"
-          rows={2}
-          style={{ width: "100%" }}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g. Reorder oat milk before Friday"
-        />
+        <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+          <textarea
+            name="description"
+            rows={2}
+            style={{ width: "100%" }}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="e.g. Reorder oat milk before Friday"
+          />
+          <MicButton value={description} onChange={setDescription} />
+        </div>
         <div style={{ marginTop: 4 }}>
           <label>
             Who&apos;s it for:{" "}
@@ -144,8 +196,14 @@ function AddTaskForm({ people, actingAsId }: { people: PersonOption[]; actingAsI
             </select>
           </label>
           <label style={{ marginLeft: 12 }}>
-            Due:{" "}
-            <input type="date" name="dueDate" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            Due (required):{" "}
+            <input
+              type="date"
+              name="dueDate"
+              required
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
           </label>
           <label style={{ marginLeft: 12 }}>
             <input
@@ -169,7 +227,7 @@ function AddTaskForm({ people, actingAsId }: { people: PersonOption[]; actingAsI
             </label>
           )}
         </div>
-        <button type="submit" disabled={pending} style={{ marginTop: 8 }}>
+        <button type="submit" disabled={pending || !dueDate} style={{ marginTop: 8 }}>
           {pending ? "Adding…" : "Add task"}
         </button>
       </form>
@@ -202,6 +260,8 @@ function KanbanBoard({
   // Staff only see their own tasks. Managers can see the whole team,
   // filterable down to "mine" or one specific person (schema doc: "Tasks —
   // Own only" for floor staff, "Own + team" for shift manager and up).
+  // This applies uniformly — self-added tasks are ordinary tasks and show
+  // up in "Team" the same as any other, no separate reminder-vs-task split.
   const [filter, setFilter] = useState("all");
 
   const scoped = isManager
@@ -314,6 +374,7 @@ function SuggestionCard({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [assignTo, setAssignTo] = useState("");
+  const [dueDate, setDueDate] = useState("");
 
   return (
     <div style={cardStyle}>
@@ -349,7 +410,8 @@ function SuggestionCard({
             </option>
           ))}
         </select>{" "}
-        <button type="submit" disabled={pending || !assignTo}>
+        <input type="date" name="dueDate" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} />{" "}
+        <button type="submit" disabled={pending || !assignTo || !dueDate}>
           {pending ? "Approving…" : "Approve as task"}
         </button>
       </form>
@@ -390,7 +452,8 @@ function TaskCard({
   const [stage, setStage] = useState<ConversationStage>("idle");
   const [blockedReason, setBlockedReason] = useState("");
   const [hasFile, setHasFile] = useState(false);
-  const [proofValue, setProofValue] = useState("");
+  const [textProof, setTextProof] = useState("");
+  const [editing, setEditing] = useState(false);
 
   function run(formData: FormData, action: (fd: FormData) => Promise<void>) {
     setError(null);
@@ -404,9 +467,10 @@ function TaskCard({
     });
   }
 
-  const needsFile = t.requiresProof && (t.proofType === "photo" || t.proofType === "voice");
-  const needsReading = t.requiresProof && t.proofType === "reading";
-  const markDoneDisabled = pending || (needsFile && !hasFile) || (needsReading && !proofValue.trim());
+  const needsFile = t.requiresProof && (t.proofType === "photo" || t.proofType === "video" || t.proofType === "audio");
+  const needsText = t.requiresProof && t.proofType === "text";
+  const markDoneDisabled = pending || (needsFile && !hasFile) || (needsText && !textProof.trim());
+  const canEdit = isManager && (t.status === "pending_approval" || t.status === "approved" || t.status === "blocked");
 
   return (
     <div style={cardStyle}>
@@ -414,8 +478,7 @@ function TaskCard({
       <p style={{ margin: "4px 0", fontSize: "0.9em", color: "#555" }}>
         {taskTagLabel(t)}
         {t.assignedToName ? ` · for ${t.assignedToName}` : ""} · <b>{t.status}</b>
-        {t.approvedByName ? ` (approved by ${t.approvedByName})` : ""}
-        {t.dueDate ? ` · due ${t.dueDate}` : ""}
+        {t.approvedByName ? ` (approved by ${t.approvedByName})` : ""} · due {t.dueDate}
       </p>
       {showPriority && <p style={{ margin: "0 0 4px", fontSize: "0.85em", color: "#888" }}>Priority: {t.priorityLabel}</p>}
       {t.resolutionNote && (
@@ -423,10 +486,21 @@ function TaskCard({
       )}
       {t.proofValue && (
         <p style={{ margin: "4px 0", fontSize: "0.9em" }}>
-          <b>Reading:</b> {t.proofValue}
+          <b>Note:</b> {t.proofValue}
         </p>
       )}
       {t.proofMediaUrl && <ProofPreview url={t.proofMediaUrl} type={t.proofType} />}
+
+      {canEdit && !editing && (
+        <p>
+          <button onClick={() => setEditing(true)} style={{ fontSize: "0.85em" }}>
+            Edit due date / proof
+          </button>
+        </p>
+      )}
+      {canEdit && editing && (
+        <TaskEditForm task={t} actingAsId={actingAsId} onDone={() => setEditing(false)} />
+      )}
 
       {t.status === "pending_approval" &&
         (isManager ? (
@@ -478,20 +552,23 @@ function TaskCard({
               <input
                 type="file"
                 name="proofFile"
-                accept={t.proofType === "voice" ? "audio/*" : "image/*"}
+                accept={t.proofType === "photo" ? "image/*" : t.proofType === "video" ? "video/*" : "audio/*"}
                 onChange={(e) => setHasFile(!!e.target.files?.length)}
                 required
               />
             )}
-            {needsReading && (
-              <input
-                type="text"
-                name="proofValue"
-                value={proofValue}
-                onChange={(e) => setProofValue(e.target.value)}
-                placeholder="e.g. 42 or ₹1500"
-                required
-              />
+            {needsText && (
+              <div style={{ display: "flex", gap: 6 }}>
+                <textarea
+                  name="proofValue"
+                  rows={2}
+                  style={{ width: "100%" }}
+                  value={textProof}
+                  onChange={(e) => setTextProof(e.target.value)}
+                  placeholder="What was discussed/done?"
+                />
+                <MicButton value={textProof} onChange={setTextProof} />
+              </div>
             )}
             <br />
             <button type="submit" disabled={markDoneDisabled} style={{ marginTop: 4 }}>
@@ -520,13 +597,16 @@ function TaskCard({
             run(fd, markTaskBlocked);
           }}
         >
-          <textarea
-            rows={2}
-            style={{ width: "100%" }}
-            value={blockedReason}
-            onChange={(e) => setBlockedReason(e.target.value)}
-            placeholder="What's blocking it?"
-          />
+          <div style={{ display: "flex", gap: 6 }}>
+            <textarea
+              rows={2}
+              style={{ width: "100%" }}
+              value={blockedReason}
+              onChange={(e) => setBlockedReason(e.target.value)}
+              placeholder="What's blocking it?"
+            />
+            <MicButton value={blockedReason} onChange={setBlockedReason} />
+          </div>
           <button type="submit" disabled={pending || !blockedReason.trim()}>
             Confirm — flag to manager
           </button>{" "}
@@ -563,6 +643,67 @@ function TaskCard({
   );
 }
 
+// Manager control over due date / proof requirement — available any time
+// on any not-yet-done task, not just baked in from creation or locked to
+// the moment of approval (point 5/1 from the Sept 13 feedback).
+function TaskEditForm({ task: t, actingAsId, onDone }: { task: TaskRow; actingAsId: string; onDone: () => void }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [dueDate, setDueDate] = useState(t.dueDate);
+  const [requiresProof, setRequiresProof] = useState(t.requiresProof);
+  const [proofType, setProofType] = useState(t.proofType ?? "photo");
+
+  return (
+    <form
+      style={{ background: "#f7f7f7", padding: 8, marginBottom: 8 }}
+      action={(formData) => {
+        setError(null);
+        startTransition(async () => {
+          try {
+            await updateTaskDetails(formData);
+            onDone();
+            router.refresh();
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+          }
+        });
+      }}
+    >
+      <input type="hidden" name="taskId" value={t.id} />
+      <input type="hidden" name="actingAsUserId" value={actingAsId} />
+      <label>
+        Due:{" "}
+        <input type="date" name="dueDate" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+      </label>
+      <label style={{ marginLeft: 8 }}>
+        <input type="checkbox" name="requiresProof" checked={requiresProof} onChange={(e) => setRequiresProof(e.target.checked)} />{" "}
+        Requires proof
+      </label>
+      {requiresProof && (
+        <label style={{ marginLeft: 8 }}>
+          <select name="proofType" value={proofType} onChange={(e) => setProofType(e.target.value)}>
+            {Object.entries(PROOF_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <div style={{ marginTop: 6 }}>
+        <button type="submit" disabled={pending || !dueDate}>
+          Save
+        </button>{" "}
+        <button type="button" onClick={onDone} disabled={pending}>
+          Cancel
+        </button>
+      </div>
+      {error && <p style={{ color: "crimson" }}>{error}</p>}
+    </form>
+  );
+}
+
 // url is a freshly-generated signed URL (see app/tasks/data.ts) — the
 // task-proofs bucket is private, so this only works because it's created
 // server-side on every page load, not a permanent public link.
@@ -571,7 +712,10 @@ function ProofPreview({ url, type }: { url: string; type: string | null }) {
     // eslint-disable-next-line @next/next/no-img-element -- signed URL, not something next/image's optimizer should cache
     return <img src={url} alt="Proof of completion" style={{ maxWidth: "100%", maxHeight: 200, display: "block", marginTop: 4 }} />;
   }
-  if (type === "voice") {
+  if (type === "video") {
+    return <video src={url} controls style={{ maxWidth: "100%", maxHeight: 200, display: "block", marginTop: 4 }} />;
+  }
+  if (type === "audio") {
     return <audio src={url} controls style={{ display: "block", marginTop: 4 }} />;
   }
   return null;

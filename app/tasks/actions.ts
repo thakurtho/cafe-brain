@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMusafirOutletId } from "@/lib/outlet";
 import { requireAccess } from "@/lib/access";
-import { APPROVER_TIERS } from "./tiers";
+import { APPROVER_TIERS, ADMIN_TIERS } from "./tiers";
 
 // ⚠️ TEMPORARY (pre-auth stopgap #4 — see app/actions.ts's file header and
 // lib/access.ts for the other three). "Acting as" is a plain user id the
@@ -24,6 +24,7 @@ const PROOF_BUCKET = "task-proofs";
 // file_size_limit in the proof-storage migration — three places that all
 // need to agree, so if you raise one, raise all three.
 const MAX_PROOF_BYTES = 10 * 1024 * 1024;
+const VALID_PROOF_TYPES = new Set(["text", "photo", "video", "audio"]);
 
 async function getActingAsPerson(userId: string) {
   if (!userId) throw new Error("Pick who you're acting as first.");
@@ -43,6 +44,19 @@ function requireApproverTier(person: { name: string; access_tier: string }, verb
   }
 }
 
+function requireAdminTier(person: { name: string; access_tier: string }, verb: string) {
+  if (!ADMIN_TIERS.has(person.access_tier)) {
+    throw new Error(`${person.name} isn't an outlet manager — can't ${verb}.`);
+  }
+}
+
+function readProofTypeField(formData: FormData, requiresProof: boolean): "text" | "photo" | "video" | "audio" | null {
+  if (!requiresProof) return null;
+  const proofType = String(formData.get("proofType") ?? "").trim();
+  if (!VALID_PROOF_TYPES.has(proofType)) throw new Error("Pick what kind of proof this task needs.");
+  return proofType as "text" | "photo" | "video" | "audio";
+}
+
 export async function createTask(formData: FormData) {
   requireAccess();
   const description = String(formData.get("description") ?? "").trim();
@@ -50,11 +64,11 @@ export async function createTask(formData: FormData) {
   const assignTo = String(formData.get("assignTo") ?? "");
   const dueDate = String(formData.get("dueDate") ?? "").trim();
   const requiresProof = formData.get("requiresProof") === "on";
-  const proofType = String(formData.get("proofType") ?? "").trim();
 
   if (!description) throw new Error("Describe the task first.");
   if (!assignTo) throw new Error("Pick who it's for.");
-  if (requiresProof && !proofType) throw new Error("Pick what kind of proof this task needs.");
+  if (!dueDate) throw new Error("Every task needs a due date now.");
+  const proofType = readProofTypeField(formData, requiresProof);
 
   const creator = await getActingAsPerson(actingAsUserId);
   const supabase = createAdminClient();
@@ -62,19 +76,21 @@ export async function createTask(formData: FormData) {
 
   const isSelf = assignTo === creator.id;
 
-  // Self-assigned tasks always skip approval (schema doc, section 5).
-  // Anyone assigning a task to someone else needs a manager's approval —
-  // deliberately no special-casing for a manager assigning it themselves;
-  // the approval step is the same regardless of who's creating it.
+  // Self-assigned tasks always skip approval (schema doc, section 5) but
+  // are still ordinary tasks — always visible to a manager viewing the
+  // team board, never a separate "personal reminder" concept. Anyone
+  // assigning a task to someone else needs a manager's approval,
+  // deliberately with no special-casing for a manager assigning it
+  // themselves — the approval step is the same regardless of creator.
   const { error } = await supabase.from("tasks").insert({
     outlet_id: outletId,
     description,
     created_by: creator.id,
     assigned_to: assignTo,
     self_assigned: isSelf,
-    due_date: dueDate || null,
+    due_date: dueDate,
     requires_proof: requiresProof,
-    proof_type: requiresProof ? (proofType as "photo" | "reading" | "voice" | "confirm") : null,
+    proof_type: proofType,
     status: isSelf ? "approved" : "pending_approval",
     approved_by: isSelf ? creator.id : null,
     approved_at: isSelf ? new Date().toISOString() : null,
@@ -96,14 +112,40 @@ export async function approveTask(formData: FormData) {
   if (error) throw new Error(error.message);
 }
 
-function classifyUploadedProof(mimeType: string): "photo" | "voice" {
-  return mimeType.startsWith("audio/") ? "voice" : "photo";
+// General manager control over any visible task's due date and proof
+// requirement — not just something locked in from whatever the creator
+// originally picked, and not limited to the moment of approval. Every
+// task is manageable the same way regardless of who created it or
+// whether it needed approval at all.
+export async function updateTaskDetails(formData: FormData) {
+  requireAccess();
+  const taskId = String(formData.get("taskId") ?? "");
+  const dueDate = String(formData.get("dueDate") ?? "").trim();
+  const requiresProof = formData.get("requiresProof") === "on";
+  const editor = await getActingAsPerson(String(formData.get("actingAsUserId") ?? ""));
+  requireApproverTier(editor, "edit tasks");
+
+  if (!dueDate) throw new Error("Every task needs a due date.");
+  const proofType = readProofTypeField(formData, requiresProof);
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ due_date: dueDate, requires_proof: requiresProof, proof_type: proofType })
+    .eq("id", taskId);
+  if (error) throw new Error(error.message);
+}
+
+function classifyUploadedProof(mimeType: string): "photo" | "video" | "audio" | "unknown" {
+  if (mimeType.startsWith("image/")) return "photo";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return "unknown";
 }
 
 export async function markTaskDone(formData: FormData) {
   requireAccess();
   const taskId = String(formData.get("taskId") ?? "");
-  const note = String(formData.get("note") ?? "").trim();
   const proofValue = String(formData.get("proofValue") ?? "").trim();
   const file = formData.get("proofFile");
   const hasFile = file instanceof File && file.size > 0;
@@ -120,20 +162,16 @@ export async function markTaskDone(formData: FormData) {
   let proofMediaPath: string | null = null;
 
   if (task.requires_proof) {
-    if (task.proof_type === "photo" || task.proof_type === "voice") {
-      if (!hasFile) {
-        throw new Error(
-          task.proof_type === "photo"
-            ? "This task needs a photo before it can be marked done."
-            : "This task needs a voice recording before it can be marked done."
-        );
-      }
+    if (task.proof_type === "text") {
+      if (!proofValue) throw new Error("This task needs a text note before it can be marked done.");
+    } else if (task.proof_type === "photo" || task.proof_type === "video" || task.proof_type === "audio") {
+      if (!hasFile) throw new Error(`This task needs a ${task.proof_type} before it can be marked done.`);
       const proofFile = file as File;
       if (proofFile.size > MAX_PROOF_BYTES) throw new Error("That file is too big — keep proof under 10MB for now.");
 
       const detected = classifyUploadedProof(proofFile.type);
       if (detected !== task.proof_type) {
-        throw new Error(`This task needs a ${task.proof_type}, not a ${detected === "voice" ? "voice recording" : "photo"}.`);
+        throw new Error(`This task needs a ${task.proof_type}, but that file looks like a ${detected}.`);
       }
 
       const ext = proofFile.name.includes(".") ? proofFile.name.split(".").pop() : detected;
@@ -143,19 +181,16 @@ export async function markTaskDone(formData: FormData) {
         .upload(path, proofFile, { contentType: proofFile.type || undefined });
       if (uploadError) throw new Error(`Proof upload failed: ${uploadError.message}`);
       proofMediaPath = path;
-    } else if (task.proof_type === "reading") {
-      if (!proofValue) throw new Error("This task needs a reading (a number or short value) before it can be marked done.");
     }
-    // 'confirm' needs nothing beyond the act of marking done itself.
   }
 
   const { error } = await supabase
     .from("tasks")
     .update({
       status: "done",
-      resolution_note: note || null,
+      completed_at: new Date().toISOString(),
       ...(proofMediaPath ? { proof_media_path: proofMediaPath } : {}),
-      ...(task.proof_type === "reading" && proofValue ? { proof_value: proofValue } : {}),
+      ...(task.proof_type === "text" && proofValue ? { proof_value: proofValue } : {}),
     })
     .eq("id", taskId);
   if (error) throw new Error(error.message);
@@ -176,6 +211,8 @@ export async function markTaskBlocked(formData: FormData) {
   if (error) throw new Error(error.message);
 }
 
+// Manual archive — stays available alongside the auto-archive setting
+// below, not replaced by it.
 export async function archiveTask(formData: FormData) {
   requireAccess();
   const taskId = String(formData.get("taskId") ?? "");
@@ -184,13 +221,32 @@ export async function archiveTask(formData: FormData) {
   if (error) throw new Error(error.message);
 }
 
+export async function updateAutoArchiveSetting(formData: FormData) {
+  requireAccess();
+  const raw = String(formData.get("autoArchiveDays") ?? "").trim();
+  const editor = await getActingAsPerson(String(formData.get("actingAsUserId") ?? ""));
+  requireAdminTier(editor, "change this setting");
+
+  const days = raw ? Number(raw) : null;
+  if (raw && (!Number.isInteger(days) || (days as number) <= 0)) {
+    throw new Error("Auto-archive days must be a whole number greater than 0, or blank to disable it.");
+  }
+
+  const supabase = createAdminClient();
+  const outletId = await getMusafirOutletId();
+  const { error } = await supabase.from("outlets").update({ auto_archive_done_after_days: days }).eq("id", outletId);
+  if (error) throw new Error(error.message);
+}
+
 export async function approvePatternAsTask(formData: FormData) {
   requireAccess();
   const patternId = String(formData.get("patternId") ?? "");
   const assignTo = String(formData.get("assignTo") ?? "");
+  const dueDate = String(formData.get("dueDate") ?? "").trim();
   const approver = await getActingAsPerson(String(formData.get("actingAsUserId") ?? ""));
   requireApproverTier(approver, "approve a suggested task");
   if (!assignTo) throw new Error("Pick who it's for.");
+  if (!dueDate) throw new Error("Every task needs a due date.");
 
   const supabase = createAdminClient();
   const outletId = await getMusafirOutletId();
@@ -212,6 +268,7 @@ export async function approvePatternAsTask(formData: FormData) {
     outlet_id: outletId,
     description: pattern.proposed_action,
     assigned_to: assignTo,
+    due_date: dueDate,
     status: "approved",
     approved_by: approver.id,
     approved_at: new Date().toISOString(),

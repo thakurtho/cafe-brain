@@ -17,11 +17,11 @@ export type TaskRow = {
   createdByName: string | null;
   selfAssigned: boolean;
   approvedByName: string | null;
-  dueDate: string | null;
+  dueDate: string;
   resolutionNote: string | null;
   archived: boolean;
   requiresProof: boolean;
-  proofType: string | null; // 'photo' | 'reading' | 'voice' | 'confirm'
+  proofType: string | null; // 'text' | 'photo' | 'video' | 'audio'
   proofValue: string | null;
   proofMediaUrl: string | null; // live signed URL, regenerated per fetch — not a stored public link
   sourcePatternId: string | null;
@@ -73,16 +73,38 @@ export async function getTasksPageData(): Promise<{
   tasks: TaskRow[];
   suggestions: SuggestionRow[];
   complianceCards: ComplianceCardRow[];
+  autoArchiveDays: number | null;
 }> {
   const supabase = createAdminClient();
   const outletId = await getMusafirOutletId();
+
+  const { data: outlet } = await supabase
+    .from("outlets")
+    .select("auto_archive_done_after_days")
+    .eq("id", outletId)
+    .single();
+  const autoArchiveDays = outlet?.auto_archive_done_after_days ?? null;
+
+  // Auto-archive sweep — lazy, runs on page load rather than a real
+  // scheduled job (this app has no cron/background-task infrastructure).
+  // Manual archiving (archiveTask) still works independently of this.
+  if (autoArchiveDays) {
+    const cutoff = new Date(Date.now() - autoArchiveDays * 24 * 60 * 60 * 1000).toISOString();
+    await supabase
+      .from("tasks")
+      .update({ archived: true })
+      .eq("outlet_id", outletId)
+      .eq("status", "done")
+      .eq("archived", false)
+      .lte("completed_at", cutoff);
+  }
 
   const [{ data: users }, { data: tasksRaw }, { data: patternsRaw }, { data: complianceRaw }] = await Promise.all([
     supabase.from("users").select("id, name, access_tier").eq("outlet_id", outletId),
     supabase
       .from("tasks")
       .select(
-        "id, description, status, assigned_to, created_by, self_assigned, approved_by, due_date, resolution_note, archived, requires_proof, proof_type, proof_value, proof_media_path, source_pattern_id, source_incident_id, created_at"
+        "id, description, status, assigned_to, created_by, self_assigned, approved_by, due_date, resolution_note, archived, requires_proof, proof_type, proof_value, proof_media_path, source_pattern_id, source_incident_id, completed_at, created_at"
       )
       .eq("outlet_id", outletId)
       .order("created_at", { ascending: false }),
@@ -163,5 +185,5 @@ export async function getTasksPageData(): Promise<{
     };
   });
 
-  return { people, tasks, suggestions, complianceCards };
+  return { people, tasks, suggestions, complianceCards, autoArchiveDays };
 }

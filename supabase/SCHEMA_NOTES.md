@@ -36,12 +36,32 @@ silently — flagging it all here for the table-structure sanity check.
   Each change was an explicit instruction, not a bug fix; noted here so
   the history is legible rather than silently overwritten each time.
 - **`tasks.proof_type` / `tasks.proof_value`** (migration `20260913170000`)
-  reuse the `proof_type` enum already defined for `checklist_items`
-  (photo/reading/voice/confirm) instead of classifying an uploaded file's
-  MIME type after the fact — the creator picks what kind of proof a task
-  needs, same model a checklist item would use. Superseded the previous
-  migration's `proof_media_type` text+CHECK column, dropped in the same
-  migration.
+  originally reused the `proof_type` enum already defined for
+  `checklist_items` (photo/reading/voice/confirm) instead of classifying an
+  uploaded file's MIME type after the fact. Superseded one migration later
+  (`20260913180000`): task and checklist proof needs turned out to
+  genuinely diverge — tasks don't want 'reading' (closing a task is
+  already an explicit confirm action, a typed number adds nothing) and do
+  want 'video' (checklist never needed it). `tasks.proof_type` now has its
+  own `task_proof_type` enum (text/photo/video/audio); `checklist_items`
+  keeps the original `proof_type` untouched. First case in this schema of
+  un-sharing a type that looked reusable at first but wasn't.
+- **`tasks.due_date` went from optional to required** (migration
+  `20260913180000`, explicit instruction) — existing null rows backfilled
+  to the migration date before the NOT NULL constraint was added. Every
+  `tasks` insert anywhere in the app (including the Ask/Tell Tell-
+  classifier's task-creation path in `app/actions.ts`, easy to miss since
+  it's a different file from the Tasks feature) now must supply one;
+  Ask/Tell defaults to a flat 3-days-out placeholder since the classifier
+  doesn't infer a real deadline from the Tell text.
+- **`tasks.completed_at`** (migration `20260913180000`) — set when a task
+  is marked done; needed for auto-archive to know how long a task's been
+  sitting there.
+- **`outlets.auto_archive_done_after_days`** (migration `20260913180000`)
+  — admin-configurable (outlet_manager/gm_owner), null = off. Swept lazily
+  in `app/tasks/data.ts` on each Tasks page load rather than a real
+  scheduled job, since this app has no cron/background-task
+  infrastructure yet. Manual archive continues to work independently.
 - **`tasks.source_pattern_id` / `tasks.source_incident_id`** (migration
   `20260913170000`) — lineage used to derive task priority (a
   pattern-sourced or safety-incident-sourced task ranks above a plain

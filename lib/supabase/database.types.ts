@@ -40,7 +40,8 @@ export type PosPermissionMode = "direct" | "requires_manager_approval";
 export type KnowledgeGapEscalationLevel = "outlet_manager" | "domain_owner" | "brand";
 export type KnowledgeGapStatus = "open" | "escalated" | "resolved";
 export type ChecklistCategory = "opening" | "closing" | "general";
-export type ProofType = "photo" | "reading" | "voice" | "confirm";
+export type ProofType = "photo" | "reading" | "voice" | "confirm"; // checklist_items only
+export type TaskProofType = "text" | "photo" | "video" | "audio"; // tasks only — a separate, diverging vocabulary
 export type ComplianceStatus = "upcoming" | "overdue" | "cleared";
 
 export interface Database {
@@ -53,9 +54,18 @@ export interface Database {
         Relationships: [];
       };
       outlets: {
-        Row: { id: string; brand_id: string; name: string; location: string | null; created_at: string };
-        Insert: { id?: string; brand_id: string; name: string; location?: string | null; created_at?: string };
-        Update: { id?: string; brand_id?: string; name?: string; location?: string | null; created_at?: string };
+        Row: {
+          id: string; brand_id: string; name: string; location: string | null;
+          auto_archive_done_after_days: number | null; created_at: string;
+        };
+        Insert: {
+          id?: string; brand_id: string; name: string; location?: string | null;
+          auto_archive_done_after_days?: number | null; created_at?: string;
+        };
+        Update: {
+          id?: string; brand_id?: string; name?: string; location?: string | null;
+          auto_archive_done_after_days?: number | null; created_at?: string;
+        };
         Relationships: [];
       };
       users: {
@@ -305,9 +315,9 @@ export interface Database {
           created_by: string | null; self_assigned: boolean; approved_by: string | null; approved_at: string | null;
           handover_reason: string | null; handover_session_id: string | null; requires_proof: boolean;
           completion_mode: CompletionMode; auto_close_entity_type: string | null; auto_close_entity_id: string | null;
-          due_date: string | null; resolution_note: string | null; archived: boolean;
-          proof_media_path: string | null; proof_type: ProofType | null; proof_value: string | null;
-          source_pattern_id: string | null; source_incident_id: string | null;
+          due_date: string; resolution_note: string | null; archived: boolean;
+          proof_media_path: string | null; proof_type: TaskProofType | null; proof_value: string | null;
+          source_pattern_id: string | null; source_incident_id: string | null; completed_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -316,9 +326,9 @@ export interface Database {
           created_by?: string | null; self_assigned?: boolean; approved_by?: string | null; approved_at?: string | null;
           handover_reason?: string | null; handover_session_id?: string | null; requires_proof?: boolean;
           completion_mode?: CompletionMode; auto_close_entity_type?: string | null; auto_close_entity_id?: string | null;
-          due_date?: string | null; resolution_note?: string | null; archived?: boolean;
-          proof_media_path?: string | null; proof_type?: ProofType | null; proof_value?: string | null;
-          source_pattern_id?: string | null; source_incident_id?: string | null;
+          due_date: string; resolution_note?: string | null; archived?: boolean;
+          proof_media_path?: string | null; proof_type?: TaskProofType | null; proof_value?: string | null;
+          source_pattern_id?: string | null; source_incident_id?: string | null; completed_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -327,9 +337,9 @@ export interface Database {
           created_by?: string | null; self_assigned?: boolean; approved_by?: string | null; approved_at?: string | null;
           handover_reason?: string | null; handover_session_id?: string | null; requires_proof?: boolean;
           completion_mode?: CompletionMode; auto_close_entity_type?: string | null; auto_close_entity_id?: string | null;
-          due_date?: string | null; resolution_note?: string | null; archived?: boolean;
-          proof_media_path?: string | null; proof_type?: ProofType | null; proof_value?: string | null;
-          source_pattern_id?: string | null; source_incident_id?: string | null;
+          due_date?: string; resolution_note?: string | null; archived?: boolean;
+          proof_media_path?: string | null; proof_type?: TaskProofType | null; proof_value?: string | null;
+          source_pattern_id?: string | null; source_incident_id?: string | null; completed_at?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -609,6 +619,7 @@ export interface Database {
       knowledge_gap_status: KnowledgeGapStatus;
       checklist_category: ChecklistCategory;
       proof_type: ProofType;
+      task_proof_type: TaskProofType;
       compliance_status: ComplianceStatus;
     };
   };
