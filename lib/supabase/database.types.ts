@@ -43,6 +43,7 @@ export type ChecklistCategory = "opening" | "closing" | "general";
 export type ProofType = "photo" | "reading" | "voice" | "confirm"; // checklist_items only
 export type TaskProofType = "text" | "photo" | "video" | "audio"; // tasks only — a separate, diverging vocabulary
 export type ShiftSwapStatus = "pending" | "approved" | "rejected";
+export type TaskCompletionStatus = "pending_review" | "accepted" | "rejected";
 export type ComplianceStatus = "upcoming" | "overdue" | "cleared";
 
 export interface Database {
@@ -321,6 +322,9 @@ export interface Database {
           source_pattern_id: string | null; source_incident_id: string | null; completed_at: string | null;
           source_compliance_id: string | null; extension_requested: boolean;
           requested_due_date: string | null; extension_reason: string | null;
+          completion_status: TaskCompletionStatus | null; completion_reviewed_by: string | null;
+          completion_reviewed_at: string | null; rejection_reason: string | null;
+          reopened_from_completion_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -334,6 +338,9 @@ export interface Database {
           source_pattern_id?: string | null; source_incident_id?: string | null; completed_at?: string | null;
           source_compliance_id?: string | null; extension_requested?: boolean;
           requested_due_date?: string | null; extension_reason?: string | null;
+          completion_status?: TaskCompletionStatus | null; completion_reviewed_by?: string | null;
+          completion_reviewed_at?: string | null; rejection_reason?: string | null;
+          reopened_from_completion_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -347,6 +354,9 @@ export interface Database {
           source_pattern_id?: string | null; source_incident_id?: string | null; completed_at?: string | null;
           source_compliance_id?: string | null; extension_requested?: boolean;
           requested_due_date?: string | null; extension_reason?: string | null;
+          completion_status?: TaskCompletionStatus | null; completion_reviewed_by?: string | null;
+          completion_reviewed_at?: string | null; rejection_reason?: string | null;
+          reopened_from_completion_id?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -670,6 +680,7 @@ export interface Database {
       proof_type: ProofType;
       task_proof_type: TaskProofType;
       shift_swap_status: ShiftSwapStatus;
+      task_completion_status: TaskCompletionStatus;
       compliance_status: ComplianceStatus;
     };
   };

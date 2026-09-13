@@ -5,6 +5,31 @@ doc referenced it without defining it, or because the dummy data needed a
 column the doc's field list didn't mention. Nothing here was guessed
 silently — flagging it all here for the table-structure sanity check.
 
+- **Task completion review** (migration `20260914110000`) — a task
+  requiring proof no longer goes straight to Done on submission; it lands
+  `completion_status = 'pending_review'` (status stays `'approved'`
+  underneath) until a manager accepts or rejects it. Tasks with
+  `requires_proof = false` skip this entirely and go straight to Done,
+  same as before — confirmed this scoping makes sense since
+  `requires_proof` was already tracked per-task, not globally, so nothing
+  new was needed to gate on it.
+  - **Accept** → `status = 'done'`, `completion_status = 'accepted'`. A
+    compliance-delegated task's compliance-clearing logic moved here from
+    `markTaskDone` — since compliance tasks always require proof, they
+    always go through review now, so clearing on raw submission would
+    have been wrong (it should wait for manager acceptance).
+  - **Reject** → the rejected attempt is **frozen, not reset**: the
+    existing row keeps its proof/notes/timestamp exactly as submitted,
+    gets `archived = true` and `status = 'rejected'` (the existing
+    `task_status` enum value, previously defined but never actually used
+    anywhere until now), plus `rejection_reason`. A **new** task row is
+    inserted carrying the same description/assignee/due
+    date/proof-requirement/source-lineage, linked back via
+    `reopened_from_completion_id`. That new row is what reappears in "To
+    complete"; the frozen one stays visible, untouched, in Archived. If
+    it's rejected again, the chain continues from whichever row it was
+    most recently reopened from, not necessarily the original.
+
 ## Decided with you
 - **Auth**: Supabase Auth, phone OTP. `public.users.id` = `auth.users.id` (1:1).
 - **Brand/outlet scoping**: `users.brand_id` (required) added to every user;

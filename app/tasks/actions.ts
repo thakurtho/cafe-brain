@@ -181,10 +181,13 @@ function classifyUploadedProof(mimeType: string): "photo" | "video" | "audio" | 
   return "unknown";
 }
 
+// Only tasks that require proof go through manager review — nothing else
+// to verify for a plain task, so it goes straight to Done, same as
+// before. requires_proof is already tracked per-task (not globally),
+// which is exactly what makes this scoping possible without a new flag.
 export async function markTaskDone(formData: FormData) {
   requireAccess();
   const taskId = String(formData.get("taskId") ?? "");
-  const actingAsUserId = String(formData.get("actingAsUserId") ?? "");
   const proofValue = String(formData.get("proofValue") ?? "").trim();
   const file = formData.get("proofFile");
   const hasFile = file instanceof File && file.size > 0;
@@ -193,65 +196,148 @@ export async function markTaskDone(formData: FormData) {
 
   const { data: task, error: taskFetchError } = await supabase
     .from("tasks")
-    .select("requires_proof, proof_type, source_compliance_id")
+    .select("requires_proof, proof_type")
     .eq("id", taskId)
     .single();
   if (taskFetchError || !task) throw new Error("That task isn't there anymore.");
 
-  let proofMediaPath: string | null = null;
-
-  if (task.requires_proof) {
-    if (task.proof_type === "text") {
-      if (!proofValue) throw new Error("This task needs a text note before it can be marked done.");
-    } else if (task.proof_type === "photo" || task.proof_type === "video" || task.proof_type === "audio") {
-      if (!hasFile) throw new Error(`This task needs a ${task.proof_type} before it can be marked done.`);
-      const proofFile = file as File;
-      if (proofFile.size > MAX_PROOF_BYTES) throw new Error("That file is too big — keep proof under 10MB for now.");
-
-      const detected = classifyUploadedProof(proofFile.type);
-      if (detected !== task.proof_type) {
-        throw new Error(`This task needs a ${task.proof_type}, but that file looks like a ${detected}.`);
-      }
-
-      const ext = proofFile.name.includes(".") ? proofFile.name.split(".").pop() : detected;
-      const path = `${taskId}/${Date.now()}-${randomUUID()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from(PROOF_BUCKET)
-        .upload(path, proofFile, { contentType: proofFile.type || undefined });
-      if (uploadError) throw new Error(`Proof upload failed: ${uploadError.message}`);
-      proofMediaPath = path;
-    }
+  if (!task.requires_proof) {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ status: "done", completed_at: new Date().toISOString() })
+      .eq("id", taskId);
+    if (error) throw new Error(error.message);
+    return;
   }
 
+  let proofMediaPath: string | null = null;
+
+  if (task.proof_type === "text") {
+    if (!proofValue) throw new Error("This task needs a text note before it can be marked done.");
+  } else if (task.proof_type === "photo" || task.proof_type === "video" || task.proof_type === "audio") {
+    if (!hasFile) throw new Error(`This task needs a ${task.proof_type} before it can be marked done.`);
+    const proofFile = file as File;
+    if (proofFile.size > MAX_PROOF_BYTES) throw new Error("That file is too big — keep proof under 10MB for now.");
+
+    const detected = classifyUploadedProof(proofFile.type);
+    if (detected !== task.proof_type) {
+      throw new Error(`This task needs a ${task.proof_type}, but that file looks like a ${detected}.`);
+    }
+
+    const ext = proofFile.name.includes(".") ? proofFile.name.split(".").pop() : detected;
+    const path = `${taskId}/${Date.now()}-${randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from(PROOF_BUCKET)
+      .upload(path, proofFile, { contentType: proofFile.type || undefined });
+    if (uploadError) throw new Error(`Proof upload failed: ${uploadError.message}`);
+    proofMediaPath = path;
+  }
+
+  // Submitting proof doesn't finish the task — status stays 'approved',
+  // it just now also carries completion_status='pending_review', which
+  // is what pulls it into "To approve/review" for a manager to look at
+  // (see the kanban filtering in tasks-app.tsx).
   const { error } = await supabase
     .from("tasks")
     .update({
-      status: "done",
+      completion_status: "pending_review",
       completed_at: new Date().toISOString(),
       ...(proofMediaPath ? { proof_media_path: proofMediaPath } : {}),
       ...(task.proof_type === "text" && proofValue ? { proof_value: proofValue } : {}),
     })
     .eq("id", taskId);
   if (error) throw new Error(error.message);
+}
 
-  // Completing a compliance-delegated task clears the compliance item too
-  // — closing the task IS closing the compliance requirement, not a
-  // separate step someone has to remember to do in a different screen.
+export async function acceptTaskCompletion(formData: FormData) {
+  requireAccess();
+  const taskId = String(formData.get("taskId") ?? "");
+  const reviewer = await getActingAsPerson(String(formData.get("actingAsUserId") ?? ""));
+  requireApproverTier(reviewer, "review task completions");
+
+  const supabase = createAdminClient();
+  const { data: task, error: fetchError } = await supabase
+    .from("tasks")
+    .select("source_compliance_id, proof_media_path, proof_type, proof_value")
+    .eq("id", taskId)
+    .single();
+  if (fetchError || !task) throw new Error("That task isn't there anymore.");
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({
+      status: "done",
+      completion_status: "accepted",
+      completion_reviewed_by: reviewer.id,
+      completion_reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", taskId);
+  if (error) throw new Error(error.message);
+
+  // Same compliance-clearing logic as before, now happens on manager
+  // acceptance rather than on the assignee's raw submission — a
+  // compliance-delegated task always requires proof, so it always goes
+  // through this review step first.
   if (task.source_compliance_id) {
     const proofReference =
-      proofMediaPath ?? (task.proof_type === "text" ? proofValue : null) ?? "Cleared via linked task completion";
-    let clearedBy: string | null = null;
-    try {
-      clearedBy = (await getActingAsPerson(actingAsUserId)).id;
-    } catch {
-      // Don't let a missing/invalid actor block the compliance clear —
-      // the task itself already succeeded above.
-    }
+      task.proof_media_path ?? (task.proof_type === "text" ? task.proof_value : null) ?? "Cleared via linked task completion";
     await supabase
       .from("compliance_reminders")
-      .update({ status: "cleared", proof_document_url: proofReference, cleared_by: clearedBy })
+      .update({ status: "cleared", proof_document_url: proofReference, cleared_by: reviewer.id })
       .eq("id", task.source_compliance_id);
   }
+}
+
+// Rejection freezes the rejected attempt as history (archived, status set
+// to the existing but previously-unused 'rejected' task_status value —
+// proof/notes/timestamp all stay exactly as submitted) rather than
+// resetting it, and spawns a fresh row carrying the same description,
+// assignment, due date, and proof requirement, linked back via
+// reopened_from_completion_id. That new row is what actually reappears in
+// "To complete" — the old one stays visible, untouched, in Archived.
+export async function rejectTaskCompletion(formData: FormData) {
+  requireAccess();
+  const taskId = String(formData.get("taskId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const reviewer = await getActingAsPerson(String(formData.get("actingAsUserId") ?? ""));
+  requireApproverTier(reviewer, "review task completions");
+  if (!reason) throw new Error("Explain what needs fixing before rejecting.");
+
+  const supabase = createAdminClient();
+  const { data: task, error: fetchError } = await supabase.from("tasks").select("*").eq("id", taskId).single();
+  if (fetchError || !task) throw new Error("That task isn't there anymore.");
+
+  const { error: freezeError } = await supabase
+    .from("tasks")
+    .update({
+      status: "rejected",
+      completion_status: "rejected",
+      rejection_reason: reason,
+      completion_reviewed_by: reviewer.id,
+      completion_reviewed_at: new Date().toISOString(),
+      archived: true,
+    })
+    .eq("id", taskId);
+  if (freezeError) throw new Error(freezeError.message);
+
+  const { error: reopenError } = await supabase.from("tasks").insert({
+    outlet_id: task.outlet_id,
+    description: task.description,
+    created_by: task.created_by,
+    assigned_to: task.assigned_to,
+    self_assigned: task.self_assigned,
+    due_date: task.due_date,
+    requires_proof: task.requires_proof,
+    proof_type: task.proof_type,
+    source_pattern_id: task.source_pattern_id,
+    source_incident_id: task.source_incident_id,
+    source_compliance_id: task.source_compliance_id,
+    status: "approved",
+    approved_by: reviewer.id,
+    approved_at: new Date().toISOString(),
+    reopened_from_completion_id: taskId,
+  });
+  if (reopenError) throw new Error(reopenError.message);
 }
 
 // "Genuinely blocked" branch of the can't-complete conversation (see

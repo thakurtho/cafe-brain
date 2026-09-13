@@ -7,6 +7,8 @@ import {
   approveTask,
   updateTaskDetails,
   markTaskDone,
+  acceptTaskCompletion,
+  rejectTaskCompletion,
   markTaskBlocked,
   requestDeadlineExtension,
   approveDeadlineExtension,
@@ -276,8 +278,15 @@ function KanbanBoard({
   // or an in-flight extension request — surfaces here regardless of its
   // primary status. An extension-requested task also still appears in "To
   // complete" (its holder can keep working it while waiting on a decision).
-  const toApprove = scoped.filter((t) => t.status === "pending_approval" || t.status === "blocked" || t.extensionRequested);
-  const toCompleteTasks = scoped.filter((t) => t.status === "approved");
+  // A task with completion_status='pending_review' is still technically
+  // status='approved' underneath, but it's no longer actionable in "To
+  // complete" — the assignee already submitted their attempt and is
+  // waiting on a manager's decision, so it moves to "To approve/review"
+  // instead, alongside the other things needing a manager's call.
+  const toApprove = scoped.filter(
+    (t) => t.status === "pending_approval" || t.status === "blocked" || t.extensionRequested || t.completionStatus === "pending_review"
+  );
+  const toCompleteTasks = scoped.filter((t) => t.status === "approved" && t.completionStatus !== "pending_review");
   const done = scoped.filter((t) => t.status === "done" && !t.archived);
   const archived = scoped.filter((t) => t.archived);
 
@@ -297,11 +306,16 @@ function KanbanBoard({
             <select value={filter} onChange={(e) => setFilter(e.target.value)}>
               <option value="all">Team (everyone)</option>
               <option value="mine">Mine</option>
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}&apos;s tasks
-                </option>
-              ))}
+              {/* "Mine" already covers the acting-as person — listing them
+                  again here would just be a second way to see the same
+                  thing. */}
+              {people
+                .filter((p) => p.id !== actingAsId)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}&apos;s tasks
+                  </option>
+                ))}
             </select>
           </label>
         </p>
@@ -527,7 +541,7 @@ function ComplianceCard({
   );
 }
 
-type ConversationStage = "idle" | "asking" | "blocked-reason" | "nudge" | "requesting-extension";
+type ConversationStage = "idle" | "asking" | "blocked-reason" | "nudge" | "requesting-extension" | "reviewing-reject";
 
 function TaskCard({
   task: t,
@@ -547,6 +561,7 @@ function TaskCard({
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState<ConversationStage>("idle");
   const [blockedReason, setBlockedReason] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
   const [hasFile, setHasFile] = useState(false);
   const [textProof, setTextProof] = useState("");
   const [editing, setEditing] = useState(false);
@@ -588,6 +603,69 @@ function TaskCard({
         </p>
       )}
       {t.proofMediaUrl && <ProofPreview url={t.proofMediaUrl} type={t.proofType} />}
+      {t.previousRejectionReason && (
+        <p style={{ margin: "4px 0", fontSize: "0.85em", color: "#a33" }}>
+          Reopened after rejection — previous attempt: &ldquo;{t.previousRejectionReason}&rdquo;. Full history in Archived.
+        </p>
+      )}
+
+      {t.completionStatus === "pending_review" && (
+        <div style={{ background: "#FBF0DC", padding: 6, margin: "6px 0", fontSize: "0.9em" }}>
+          <p style={{ margin: 0 }}>
+            <b>Completed — pending review</b>
+          </p>
+          {isManager ? (
+            stage === "reviewing-reject" ? (
+              <form
+                action={(fd) => {
+                  fd.set("taskId", t.id);
+                  fd.set("actingAsUserId", actingAsId);
+                  fd.set("reason", rejectReason);
+                  run(fd, rejectTaskCompletion);
+                }}
+              >
+                <p style={{ margin: "4px 0" }}>What needs fixing?</p>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <textarea
+                    rows={2}
+                    style={{ width: "100%" }}
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="Explain what's wrong with this attempt…"
+                  />
+                  <MicButton value={rejectReason} onChange={setRejectReason} />
+                </div>
+                <button type="submit" disabled={pending || !rejectReason.trim()}>
+                  Confirm rejection
+                </button>{" "}
+                <button type="button" onClick={() => setStage("idle")} disabled={pending}>
+                  Back
+                </button>
+              </form>
+            ) : (
+              <div>
+                <form
+                  action={(fd) => {
+                    fd.set("taskId", t.id);
+                    fd.set("actingAsUserId", actingAsId);
+                    run(fd, acceptTaskCompletion);
+                  }}
+                  style={{ display: "inline" }}
+                >
+                  <button type="submit" disabled={pending}>
+                    Accept
+                  </button>
+                </form>{" "}
+                <button type="button" onClick={() => setStage("reviewing-reject")} disabled={pending}>
+                  Reject
+                </button>
+              </div>
+            )
+          ) : (
+            <span style={{ color: "#888" }}>Awaiting manager review.</span>
+          )}
+        </div>
+      )}
 
       {t.extensionRequested && (
         <div style={{ background: "#FBF0DC", padding: 6, margin: "6px 0", fontSize: "0.9em" }}>
@@ -669,7 +747,7 @@ function TaskCard({
           <span style={{ color: "#888", fontSize: "0.9em" }}>Flagged to a manager.</span>
         ))}
 
-      {t.status === "approved" && stage === "idle" && (
+      {t.status === "approved" && t.completionStatus !== "pending_review" && stage === "idle" && (
         <div>
           <form
             action={(fd) => {

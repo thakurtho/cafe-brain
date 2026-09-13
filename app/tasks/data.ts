@@ -30,6 +30,10 @@ export type TaskRow = {
   extensionRequested: boolean;
   requestedDueDate: string | null;
   extensionReason: string | null;
+  completionStatus: string | null; // 'pending_review' | 'accepted' | 'rejected' — null if it never required review
+  completionReviewedByName: string | null;
+  rejectionReason: string | null;
+  previousRejectionReason: string | null; // from the attempt this was reopened from, if any
   priorityScore: number;
   priorityLabel: string;
   createdAt: string;
@@ -112,7 +116,7 @@ export async function getTasksPageData(): Promise<{
     supabase
       .from("tasks")
       .select(
-        "id, description, status, assigned_to, created_by, self_assigned, approved_by, due_date, resolution_note, archived, requires_proof, proof_type, proof_value, proof_media_path, source_pattern_id, source_incident_id, source_compliance_id, extension_requested, requested_due_date, extension_reason, completed_at, created_at"
+        "id, description, status, assigned_to, created_by, self_assigned, approved_by, due_date, resolution_note, archived, requires_proof, proof_type, proof_value, proof_media_path, source_pattern_id, source_incident_id, source_compliance_id, extension_requested, requested_due_date, extension_reason, completion_status, completion_reviewed_by, rejection_reason, reopened_from_completion_id, completed_at, created_at"
       )
       .eq("outlet_id", outletId)
       .order("created_at", { ascending: false }),
@@ -150,6 +154,10 @@ export async function getTasksPageData(): Promise<{
     (a, b) => DISPLAY_ORDER.indexOf(a.name) - DISPLAY_ORDER.indexOf(b.name)
   );
   const nameById = new Map(people.map((p) => [p.id, p.name]));
+  // The frozen (archived) rejected attempt a reopened task points back to
+  // is itself in this same fetched set — no extra query needed to look up
+  // its rejection_reason for display on the new attempt.
+  const rejectionReasonByTaskId = new Map((tasksRaw ?? []).map((t) => [t.id, t.rejection_reason]));
 
   const tasks: TaskRow[] = await Promise.all(
     (tasksRaw ?? []).map(async (t) => {
@@ -184,6 +192,12 @@ export async function getTasksPageData(): Promise<{
         extensionRequested: t.extension_requested,
         requestedDueDate: t.requested_due_date,
         extensionReason: t.extension_reason,
+        completionStatus: t.completion_status,
+        completionReviewedByName: t.completion_reviewed_by ? nameById.get(t.completion_reviewed_by) ?? "Unknown" : null,
+        rejectionReason: t.rejection_reason,
+        previousRejectionReason: t.reopened_from_completion_id
+          ? rejectionReasonByTaskId.get(t.reopened_from_completion_id) ?? null
+          : null,
         priorityScore: priority.score,
         priorityLabel: priority.label,
         createdAt: t.created_at,
