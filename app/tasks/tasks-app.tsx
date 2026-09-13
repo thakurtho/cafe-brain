@@ -85,6 +85,7 @@ function AddTaskForm({ people, actingAsId }: { people: PersonOption[]; actingAsI
   const [error, setError] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [requiresProof, setRequiresProof] = useState(false);
   const [assignTo, setAssignTo] = useState(actingAsId);
 
   // Keep the "who's it for" default pointing at "myself" as the acting-as
@@ -102,6 +103,7 @@ function AddTaskForm({ people, actingAsId }: { people: PersonOption[]; actingAsI
               await createTask(formData);
               setDescription("");
               setDueDate("");
+              setRequiresProof(false);
               router.refresh();
             } catch (e) {
               setError(e instanceof Error ? e.message : String(e));
@@ -132,6 +134,15 @@ function AddTaskForm({ people, actingAsId }: { people: PersonOption[]; actingAsI
           <label style={{ marginLeft: 12 }}>
             Due:{" "}
             <input type="date" name="dueDate" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </label>
+          <label style={{ marginLeft: 12 }}>
+            <input
+              type="checkbox"
+              name="requiresProof"
+              checked={requiresProof}
+              onChange={(e) => setRequiresProof(e.target.checked)}
+            />{" "}
+            Requires proof of completion
           </label>
         </div>
         <button type="submit" disabled={pending} style={{ marginTop: 8 }}>
@@ -306,6 +317,7 @@ function TaskItem({
   const [error, setError] = useState<string | null>(null);
   const [showBlockedForm, setShowBlockedForm] = useState(false);
   const [note, setNote] = useState("");
+  const [hasFile, setHasFile] = useState(false);
 
   function run(formData: FormData, action: (fd: FormData) => Promise<void>) {
     setError(null);
@@ -333,6 +345,7 @@ function TaskItem({
           &ldquo;{t.resolutionNote}&rdquo;
         </p>
       )}
+      {t.proofMediaUrl && <ProofPreview url={t.proofMediaUrl} type={t.proofMediaType} />}
 
       {t.status === "pending_approval" &&
         (isManager ? (
@@ -353,21 +366,32 @@ function TaskItem({
 
       {t.status === "approved" && !showBlockedForm && (
         <div>
+          {t.requiresProof && (
+            <p style={{ margin: "0 0 4px", fontSize: "0.85em", color: "#a33" }}>
+              Proof of completion required — attach a photo, video, audio, or document below.
+            </p>
+          )}
           <form
             action={(fd) => {
               fd.set("taskId", t.id);
-              fd.set("note", note);
               run(fd, markTaskDone);
             }}
-            style={{ display: "inline" }}
           >
-            <button type="submit" disabled={pending}>
+            <input
+              type="file"
+              name="proofFile"
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+              onChange={(e) => setHasFile(!!e.target.files?.length)}
+              required={t.requiresProof}
+            />
+            <br />
+            <button type="submit" disabled={pending || (t.requiresProof && !hasFile)} style={{ marginTop: 4 }}>
               Mark done
+            </button>{" "}
+            <button type="button" onClick={() => setShowBlockedForm(true)} disabled={pending}>
+              Couldn&apos;t complete it
             </button>
-          </form>{" "}
-          <button type="button" onClick={() => setShowBlockedForm(true)} disabled={pending}>
-            Couldn&apos;t complete it
-          </button>
+          </form>
         </div>
       )}
 
@@ -418,5 +442,28 @@ function TaskItem({
 
       {error && <p style={{ color: "crimson" }}>{error}</p>}
     </div>
+  );
+}
+
+// url is a freshly-generated signed URL (see app/tasks/data.ts) — the
+// task-proofs bucket is private, so this only works because it's created
+// server-side on every page load, not a permanent public link.
+function ProofPreview({ url, type }: { url: string; type: string | null }) {
+  if (type === "photo") {
+    // eslint-disable-next-line @next/next/no-img-element -- signed URL, not something next/image's optimizer should cache
+    return <img src={url} alt="Proof of completion" style={{ maxWidth: "100%", maxHeight: 240, display: "block", marginTop: 4 }} />;
+  }
+  if (type === "video") {
+    return <video src={url} controls style={{ maxWidth: "100%", maxHeight: 240, display: "block", marginTop: 4 }} />;
+  }
+  if (type === "audio") {
+    return <audio src={url} controls style={{ display: "block", marginTop: 4 }} />;
+  }
+  return (
+    <p style={{ margin: "4px 0" }}>
+      <a href={url} target="_blank" rel="noopener noreferrer">
+        View proof document
+      </a>
+    </p>
   );
 }

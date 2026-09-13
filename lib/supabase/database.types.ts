@@ -306,6 +306,7 @@ export interface Database {
           handover_reason: string | null; handover_session_id: string | null; requires_proof: boolean;
           completion_mode: CompletionMode; auto_close_entity_type: string | null; auto_close_entity_id: string | null;
           due_date: string | null; resolution_note: string | null; archived: boolean;
+          proof_media_path: string | null; proof_media_type: string | null;
           created_at: string;
         };
         Insert: {
@@ -315,6 +316,7 @@ export interface Database {
           handover_reason?: string | null; handover_session_id?: string | null; requires_proof?: boolean;
           completion_mode?: CompletionMode; auto_close_entity_type?: string | null; auto_close_entity_id?: string | null;
           due_date?: string | null; resolution_note?: string | null; archived?: boolean;
+          proof_media_path?: string | null; proof_media_type?: string | null;
           created_at?: string;
         };
         Update: {
@@ -324,6 +326,7 @@ export interface Database {
           handover_reason?: string | null; handover_session_id?: string | null; requires_proof?: boolean;
           completion_mode?: CompletionMode; auto_close_entity_type?: string | null; auto_close_entity_id?: string | null;
           due_date?: string | null; resolution_note?: string | null; archived?: boolean;
+          proof_media_path?: string | null; proof_media_type?: string | null;
           created_at?: string;
         };
         Relationships: [];

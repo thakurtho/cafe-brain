@@ -1,8 +1,22 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMusafirOutletId } from "@/lib/outlet";
 import { requireAccess } from "@/lib/access";
+
+const PROOF_BUCKET = "task-proofs";
+// Matches next.config.mjs's serverActionsBodySizeLimit and the bucket's
+// file_size_limit in the proof-storage migration — three places that all
+// need to agree, so if you raise one, raise all three.
+const MAX_PROOF_BYTES = 10 * 1024 * 1024;
+
+function classifyProofType(mimeType: string): "photo" | "video" | "audio" | "doc" {
+  if (mimeType.startsWith("image/")) return "photo";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return "doc";
+}
 
 // ⚠️ TEMPORARY (pre-auth stopgap #4 — see app/actions.ts's file header and
 // lib/access.ts for the other three). "Acting as" is a plain user id the
@@ -43,6 +57,7 @@ export async function createTask(formData: FormData) {
   const actingAsUserId = String(formData.get("actingAsUserId") ?? "");
   const assignTo = String(formData.get("assignTo") ?? "");
   const dueDate = String(formData.get("dueDate") ?? "").trim();
+  const requiresProof = formData.get("requiresProof") === "on";
 
   if (!description) throw new Error("Describe the task first.");
   if (!assignTo) throw new Error("Pick who it's for.");
@@ -68,6 +83,7 @@ export async function createTask(formData: FormData) {
     assigned_to: assignTo,
     self_assigned: isSelf,
     due_date: dueDate || null,
+    requires_proof: requiresProof,
     status: autoApprove ? "approved" : "pending_approval",
     approved_by: autoApprove ? creator.id : null,
     approved_at: autoApprove ? new Date().toISOString() : null,
@@ -93,11 +109,49 @@ export async function markTaskDone(formData: FormData) {
   requireAccess();
   const taskId = String(formData.get("taskId") ?? "");
   const note = String(formData.get("note") ?? "").trim();
+  const file = formData.get("proofFile");
+  const hasFile = file instanceof File && file.size > 0;
 
   const supabase = createAdminClient();
+
+  const { data: task, error: taskFetchError } = await supabase
+    .from("tasks")
+    .select("requires_proof")
+    .eq("id", taskId)
+    .single();
+  if (taskFetchError || !task) throw new Error("That task isn't there anymore.");
+
+  if (task.requires_proof && !hasFile) {
+    throw new Error("This task requires proof of completion — attach a photo, video, audio, or document.");
+  }
+
+  let proofMediaPath: string | null = null;
+  let proofMediaType: string | null = null;
+
+  if (hasFile) {
+    const proofFile = file as File;
+    if (proofFile.size > MAX_PROOF_BYTES) {
+      throw new Error("That file is too big — keep proof under 10MB for now.");
+    }
+    proofMediaType = classifyProofType(proofFile.type);
+    const ext = proofFile.name.includes(".") ? proofFile.name.split(".").pop() : proofMediaType;
+    const path = `${taskId}/${Date.now()}-${randomUUID()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(PROOF_BUCKET)
+      .upload(path, proofFile, { contentType: proofFile.type || undefined });
+    if (uploadError) throw new Error(`Proof upload failed: ${uploadError.message}`);
+
+    proofMediaPath = path;
+  }
+
   const { error } = await supabase
     .from("tasks")
-    .update({ status: "done", resolution_note: note || null })
+    .update({
+      status: "done",
+      resolution_note: note || null,
+      ...(proofMediaPath ? { proof_media_path: proofMediaPath, proof_media_type: proofMediaType } : {}),
+    })
     .eq("id", taskId);
   if (error) throw new Error(error.message);
 }
