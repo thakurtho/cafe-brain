@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outlet Brain — Manager App Final</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#241F1C; --paper:#F3EEE4; --card:#FFFFFF; --chrome:#221D19;
+    --copper:#B5651D; --copper-light:#F3D9BE; --copper-dark:#7A4413;
+    --sage:#4B6B4E; --sage-light:#E1EAE0;
+    --brick:#A83B32; --brick-light:#F5DAD7;
+    --blue:#3D5A80; --blue-light:#E3EAF2;
+    --purple:#6B3FA0; --purple-light:#EFE3F5;
+    --muted:#8A8375; --border:#E4DDCB;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#DCD5C4;font-family:'Work Sans',sans-serif;color:var(--ink);
+    display:flex;justify-content:center;padding:32px 12px;min-height:100vh;}
+  h1,h2,h3,.serif{font-family:'Fraunces',serif;}
+  .phone{width:390px;background:var(--paper);border-radius:34px;overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,0.28);display:flex;flex-direction:column;height:860px;}
+  .statusbar{background:var(--chrome);color:#fff;padding:18px 22px 14px;flex-shrink:0;}
+  .statusbar .outlet{font-size:11.5px;color:#C7BDA8;margin-bottom:4px;}
+  .statusbar .row{display:flex;align-items:center;justify-content:space-between;}
+  .statusbar .greet{font-family:'Fraunces',serif;font-size:19px;font-weight:500;}
+  .rolepill{font-size:10px;color:#C7BDA8;background:rgba(255,255,255,0.08);padding:3px 9px;border-radius:20px;margin-top:4px;display:inline-block;}
+  .avatar{width:34px;height:34px;border-radius:50%;background:var(--copper);
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0;cursor:pointer;}
+  .screen{flex:1;overflow-y:auto;padding:18px 20px 90px;display:none;}
+  .screen.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:15px 17px;margin-bottom:12px;}
+  .sub{color:var(--muted);font-size:12.5px;}
+  .btn{border:none;border-radius:11px;padding:12px 16px;font-family:'Work Sans';font-weight:600;
+    font-size:13.5px;cursor:pointer;width:100%;text-align:center;}
+  .btn-copper{background:var(--copper);color:#fff;}
+  .btn-sage{background:var(--sage);color:#fff;}
+  .btn-ghost{background:#fff;border:1.5px solid var(--border);color:var(--ink);}
+  .btn-sm{padding:7px 12px;font-size:12px;width:auto;border-radius:9px;}
+  .row2{display:flex;gap:7px;}
+  .row2 .btn{flex:1;}
+  .section-label{font-size:11.5px;color:var(--muted);margin:16px 0 8px;display:flex;justify-content:space-between;align-items:center;}
+  .link{color:var(--copper-dark);font-size:12px;cursor:pointer;}
+
+  /* HOME */
+  .voice-row{display:flex;gap:10px;margin-bottom:14px;}
+  .voice-tile{flex:1;background:var(--chrome);border-radius:16px;padding:14px 10px;text-align:center;}
+  .voice-tile.tell{background:var(--copper-dark);}
+  .mic-btn{width:42px;height:42px;border-radius:50%;background:var(--copper);border:none;
+    display:flex;align-items:center;justify-content:center;margin:0 auto 6px;cursor:pointer;}
+  .voice-tile.tell .mic-btn{background:#fff;}
+  .mic-btn svg{width:17px;height:17px;}
+  .voice-tile .vlabel{color:#fff;font-family:'Fraunces',serif;font-size:13px;}
+  .broadcast-btn{display:flex;align-items:center;justify-content:center;gap:6px;background:var(--card);
+    border:1.5px dashed var(--copper); border-radius:12px;padding:10px;font-size:12.5px;color:var(--copper-dark);
+    cursor:pointer;margin-bottom:16px;font-weight:600;}
+  .filter-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+  .fchip{border:1.5px solid var(--border);border-radius:20px;padding:5px 11px;font-size:11px;
+    cursor:pointer;background:#fff;white-space:nowrap;}
+  .fchip.on{background:var(--chrome);border-color:var(--chrome);color:#fff;}
+  .swipe-card{display:flex;align-items:stretch;border-radius:12px;overflow:hidden;margin-bottom:8px;border:1px solid var(--border);}
+  .swipe-content{flex:1;background:var(--card);padding:12px 14px;}
+  .swipe-archive{width:52px;background:var(--muted);display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex-shrink:0;}
+  .swipe-archive svg{width:16px;height:16px;}
+  .update-type{font-size:9.5px;font-weight:700;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.02em;}
+  .update-type.broadcast{color:var(--copper-dark);}
+  .update-type.open{color:var(--brick);}
+  .update-type.resolved{color:var(--sage);}
+  .update-type.pattern-closed{color:var(--purple);}
+  .update-text{font-size:13px;margin-bottom:2px;}
+  .update-meta{font-size:11px;color:var(--muted);}
+  .status-tag{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:5px;text-transform:uppercase;}
+  .status-tag.open{background:var(--brick-light);color:var(--brick);}
+  .status-tag.resolved{background:var(--sage-light);color:var(--sage);}
+  .status-tag.dismissed{background:#EDEDED;color:var(--muted);}
+  .status-tag.actioned{background:var(--sage-light);color:var(--sage);}
+
+  /* TASKS */
+  .kanban-col{margin-bottom:18px;}
+  .kanban-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
+  .kanban-head h3{font-size:12.5px;font-family:'Work Sans';font-weight:600;color:var(--muted);}
+  .kanban-count{font-size:10.5px;color:var(--muted);background:var(--card);border:1px solid var(--border);
+    padding:1px 7px;border-radius:20px;}
+  .kcard{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:12px 14px;margin-bottom:8px;}
+  .kcard.decide{border-left:3px solid var(--copper);}
+  .kcard.do{border-left:3px solid var(--blue);}
+  .ktype{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:20px;display:inline-flex;align-items:center;gap:3px;margin-bottom:6px;}
+  .kt-task{background:var(--blue-light);color:var(--blue);}
+  .kt-pattern{background:var(--copper-light);color:var(--copper-dark);}
+  .kt-gap{background:var(--brick-light);color:var(--brick);}
+  .kt-incident{background:#FCE4D6;color:#B5651D;}
+  .kt-spotcheck{background:var(--purple-light);color:var(--purple);}
+  .kt-wastage{background:var(--sage-light);color:var(--sage);}
+  .ktitle{font-size:13px;font-weight:500;margin-bottom:4px;}
+  .kmeta{font-size:11px;color:var(--muted);margin-bottom:7px;}
+  .proposed-box{background:var(--paper);border:1px solid var(--border);border-radius:9px;padding:8px 10px;margin-bottom:8px;}
+  .proposed-box textarea{width:100%;border:none;background:transparent;font-size:11.5px;font-family:'Work Sans';resize:none;height:38px;outline:none;}
+  .proposed-label{font-size:9.5px;color:var(--muted);margin-bottom:3px;}
+  .fields-row{display:flex;gap:7px;margin-bottom:8px;}
+  .fields-row input[type=date]{flex:1;border:1px solid var(--border);border-radius:8px;padding:5px 7px;font-size:11px;font-family:'Work Sans';}
+  .check-inline{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+
+  /* TEAM */
+  .team-tabs{display:flex;gap:5px;margin-bottom:12px;}
+  .ttab{flex:1;text-align:center;padding:7px 0;border-radius:9px;font-size:10.5px;background:var(--card);
+    border:1px solid var(--border);cursor:pointer;}
+  .ttab.on{background:var(--chrome);border-color:var(--chrome);color:#fff;}
+  .team-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:13px 15px;margin-bottom:9px;}
+  .team-card.recognition{border-left:3px solid var(--sage);}
+  .team-card.coaching{border-left:3px solid var(--copper);}
+  .team-card.judgment{border-left:3px solid var(--blue);}
+  .team-card.gap{border-left:3px solid var(--purple);}
+  .team-icon{font-size:14px;margin-right:4px;}
+  .team-name{font-size:12px;font-weight:600;margin-bottom:4px;}
+  .team-text{font-size:12.5px;margin-bottom:6px;}
+  .team-meta{font-size:10.5px;color:var(--muted);margin-bottom:8px;}
+
+  /* SHIFT */
+  .weekstrip{display:flex;gap:6px;margin-bottom:18px;}
+  .daychip{flex:1;text-align:center;padding:10px 0;border-radius:12px;background:var(--card);border:1px solid var(--border);}
+  .daychip.today{background:var(--chrome);border-color:var(--chrome);}
+  .daychip .d{font-size:11px;color:var(--muted);}
+  .daychip.today .d{color:#C7BDA8;}
+  .daychip .n{font-family:'Fraunces',serif;font-size:16px;margin-top:2px;}
+  .daychip.today .n{color:#fff;}
+  .scope-toggle{display:flex;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:3px;margin-bottom:16px;}
+  .scope-btn{flex:1;text-align:center;padding:8px 0;border-radius:9px;font-size:13px;cursor:pointer;}
+  .scope-btn.on{background:var(--chrome);color:#fff;font-weight:500;}
+  .shift-card{background:var(--copper-light);border-radius:16px;padding:18px;margin-bottom:14px;}
+  .shift-card .label{font-size:12px;color:var(--copper-dark);margin-bottom:4px;}
+  .shift-card .time{font-family:'Fraunces',serif;font-size:20px;margin-bottom:2px;}
+
+  /* REPORTS */
+  .rtabs{display:flex;gap:6px;margin-bottom:16px;}
+  .rtab{flex:1;text-align:center;padding:9px 0;border-radius:10px;font-size:12px;background:var(--card);
+    border:1px solid var(--border);cursor:pointer;}
+  .rtab.on{background:var(--chrome);border-color:var(--chrome);color:#fff;}
+  .insight-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:15px 17px;margin-bottom:11px;}
+  .insight-src{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;}
+  .insight-text{font-size:13px;margin-bottom:7px;}
+
+  /* PROFILE/ADMIN */
+  .admin-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);}
+  .admin-row:last-child{border-bottom:none;}
+  .admin-title{font-size:13.5px;}
+  .admin-meta{font-size:11.5px;color:var(--muted);}
+  .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+  .status-dot.ok{background:var(--sage);}
+  .status-dot.err{background:var(--brick);}
+  .vacancy{color:var(--brick);}
+
+  /* NAV */
+  .bottomnav{display:flex;background:var(--chrome);padding:11px 4px 16px;flex-shrink:0;}
+  .navitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:#8A8072;}
+  .navitem.active{color:#fff;}
+  .navitem svg{width:18px;height:18px;}
+  .navitem span{font-size:9px;}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="statusbar">
+    <div class="outlet">Kaapi Junction — Indiranagar</div>
+    <div class="row">
+      <div><div class="greet">Good evening, Priya</div><span class="rolepill">Outlet Manager</span></div>
+      <div class="avatar" onclick="showScreen('screen-profile-content')">P</div>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div class="screen active" id="screen-home">
+    <div class="voice-row">
+      <div class="voice-tile ask"><button class="mic-btn"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/></svg></button><div class="vlabel">Ask</div></div>
+      <div class="voice-tile tell"><button class="mic-btn"><svg viewBox="0 0 24 24" fill="none" stroke="#B5651D" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/></svg></button><div class="vlabel">Tell</div></div>
+    </div>
+    <div class="broadcast-btn" onclick="alert('Compose a broadcast — voice or text, sent to all staff or a specific role.')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9-9"/><path d="M4 11a5 5 0 0 1 5-5"/><circle cx="4" cy="16" r="2"/></svg>
+      + Broadcast to staff
+    </div>
+
+    <div class="section-label"><span>Updates</span><span class="link">Swipe left to archive</span></div>
+    <div class="filter-row">
+      <div class="fchip on" onclick="toggleChip(this)">All</div>
+      <div class="fchip" onclick="toggleChip(this)">Open</div>
+      <div class="fchip" onclick="toggleChip(this)">Logs</div>
+      <div class="fchip" onclick="toggleChip(this)">Incidents</div>
+      <div class="fchip" onclick="toggleChip(this)">Patterns</div>
+      <div class="fchip" onclick="toggleChip(this)">Broadcasts</div>
+    </div>
+
+    <div class="swipe-card">
+      <div class="swipe-content">
+        <div class="update-type broadcast">Broadcast · Priya</div>
+        <div class="update-text">Closing 30 min early today — private event booked</div>
+        <div class="update-meta">9:00 AM</div>
+      </div>
+      <div class="swipe-archive" onclick="archiveCard(this)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/></svg></div>
+    </div>
+
+    <div class="swipe-card">
+      <div class="swipe-content">
+        <div class="update-type">Log · Vendor</div>
+        <div class="update-text">Milk delivery ran late, nothing ran out</div>
+        <div class="update-meta">Rekha · 9:10 AM</div>
+      </div>
+      <div class="swipe-archive" onclick="archiveCard(this)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/></svg></div>
+    </div>
+
+    <div class="swipe-card">
+      <div class="swipe-content">
+        <div class="update-type open">Incident · Equipment <span class="status-tag open">Open, floor-handled</span></div>
+        <div class="update-text">Grinder noise — see Team screen while open</div>
+        <div class="update-meta">Aman · 11:40 AM</div>
+      </div>
+      <div class="swipe-archive" onclick="archiveCard(this)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/></svg></div>
+    </div>
+
+    <div class="swipe-card">
+      <div class="swipe-content">
+        <div class="update-type resolved">Incident · Equipment <span class="status-tag resolved">Resolved</span></div>
+        <div class="update-text">Machine 2 stopped mid-shift, restarted, working fine now</div>
+        <div class="update-meta">Aman · 3:12 PM</div>
+      </div>
+      <div class="swipe-archive" onclick="archiveCard(this)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/></svg></div>
+    </div>
+
+    <div class="swipe-card">
+      <div class="swipe-content">
+        <div class="update-type pattern-closed">Pattern · Vendor <span class="status-tag actioned">Actioned</span></div>
+        <div class="update-text">Hilltop Bakers, 3 issues this month — switched to backup vendor for weekends</div>
+        <div class="update-meta">Task created 2 Sep</div>
+      </div>
+      <div class="swipe-archive" onclick="archiveCard(this)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/></svg></div>
+    </div>
+
+    <div class="swipe-card">
+      <div class="swipe-content">
+        <div class="update-type pattern-closed">Pattern · Facility <span class="status-tag dismissed">Dismissed</span></div>
+        <div class="update-text">Outdoor seating maintenance flagged twice — dismissed by Priya</div>
+        <div class="update-meta">1 Sep</div>
+      </div>
+      <div class="swipe-archive" onclick="archiveCard(this)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/></svg></div>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="screen" id="screen-tasks">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h2 class="serif" style="font-size:17px;">Tasks</h2>
+      <button class="btn btn-copper btn-sm">+ New task</button>
+    </div>
+
+    <div class="kanban-col">
+      <div class="kanban-head"><h3>To approve / review</h3><span class="kanban-count">6</span></div>
+      <div class="filter-row">
+        <div class="fchip on" onclick="toggleChip(this)">All</div>
+        <div class="fchip" onclick="toggleChip(this)">Tasks</div>
+        <div class="fchip" onclick="toggleChip(this)">Patterns</div>
+        <div class="fchip" onclick="toggleChip(this)">Gaps</div>
+        <div class="fchip" onclick="toggleChip(this)">Spot-checks</div>
+        <div class="fchip" onclick="toggleChip(this)">Wastage</div>
+      </div>
+
+      <div class="kcard decide">
+        <span class="ktype kt-task">Task — needs an owner</span>
+        <div class="ktitle">Deep clean grinder</div>
+        <div class="kmeta">Not pre-assigned — logged without a stated owner</div>
+        <div class="fields-row"><input type="date"><span class="check-inline"><input type="checkbox" checked> Proof required</span></div>
+        <div class="row2"><button class="btn btn-ghost btn-sm">Reject</button><button class="btn btn-copper btn-sm">Approve &amp; assign</button></div>
+      </div>
+
+      <div class="kcard decide">
+        <span class="ktype kt-wastage">Wastage</span>
+        <div class="ktitle">4 oat milk cartons — expired</div>
+        <div class="kmeta">Aman · 6:20 PM · photo attached</div>
+        <div class="row2"><button class="btn btn-ghost btn-sm">Reject</button><button class="btn btn-sage btn-sm">Approve &amp; sync to POS</button></div>
+      </div>
+
+      <div class="kcard decide">
+        <span class="ktype kt-pattern">Pattern — vendor</span>
+        <div class="ktitle">Hilltop Bakers: late, short-shipped, wrong item — 3 issues this month</div>
+        <div class="proposed-box"><div class="proposed-label">Suggested action — edit freely</div><textarea>Switch to backup bakery vendor for weekend orders.</textarea></div>
+        <div class="row2"><button class="btn btn-ghost btn-sm">Dismiss</button><button class="btn btn-copper btn-sm">Create task from this</button></div>
+      </div>
+
+      <div class="kcard decide">
+        <span class="ktype kt-incident">Incident — needs a decision</span>
+        <div class="ktitle">AC in back room not cooling</div>
+        <div class="proposed-box"><div class="proposed-label">Suggested action — edit freely</div><textarea>Book AC technician visit.</textarea></div>
+        <div class="row2"><button class="btn btn-ghost btn-sm">Dismiss</button><button class="btn btn-copper btn-sm">Create task from this</button></div>
+      </div>
+
+      <div class="kcard decide">
+        <span class="ktype kt-gap">Knowledge gap</span>
+        <div class="ktitle">"What's the oat milk substitution ratio for the seasonal latte?"</div>
+        <div class="kmeta">Asked once, no SOP covers it</div>
+        <div class="proposed-box"><div class="proposed-label">Your answer — becomes the SOP</div><textarea placeholder="Write the answer..."></textarea></div>
+        <button class="btn btn-copper btn-sm">Save as new SOP</button>
+      </div>
+
+      <div class="kcard decide">
+        <span class="ktype kt-spotcheck">Spot-check</span>
+        <div class="ktitle">"Fix wobbly table" — marked done, photo attached</div>
+        <div class="kmeta">Randomly selected for review</div>
+        <div class="row2"><button class="btn btn-ghost btn-sm">Reject</button><button class="btn btn-sage btn-sm">Accept</button></div>
+      </div>
+    </div>
+
+    <div class="kanban-col">
+      <div class="kanban-head"><h3>To complete</h3><span class="kanban-count">2</span></div>
+      <div class="kcard do"><span class="ktype kt-task">Task</span><div class="ktitle">Walk the floor before evening rush</div><div class="kmeta">Self-added</div><button class="btn btn-sage btn-sm">Mark done</button></div>
+      <div class="kcard do"><span class="ktype kt-task">Task</span><div class="ktitle">Book AC technician visit</div><div class="kmeta">From incident · linked automatically</div><button class="btn btn-sage btn-sm">Mark done</button></div>
+    </div>
+  </div>
+
+  <!-- TEAM -->
+  <div class="screen" id="screen-team">
+    <h2 class="serif" style="font-size:17px;margin-bottom:10px;">Team</h2>
+    <div class="team-tabs">
+      <div class="ttab on" onclick="toggleTab(this)">All</div>
+      <div class="ttab" onclick="toggleTab(this)">Judgment</div>
+      <div class="ttab" onclick="toggleTab(this)">Recognition</div>
+      <div class="ttab" onclick="toggleTab(this)">Coaching</div>
+      <div class="ttab" onclick="toggleTab(this)">Open (floor-handled)</div>
+      <div class="ttab" onclick="toggleTab(this)">Training</div>
+    </div>
+
+    <div class="team-card judgment">
+      <div class="team-name"><span class="team-icon">⚖️</span>Aman Rawat — Judgment call</div>
+      <div class="team-text">Remade Shweta's coffee — she didn't enjoy it</div>
+      <div class="team-meta">4:12 PM</div>
+      <div class="row2"><button class="btn btn-ghost btn-sm">Better approach</button><button class="btn btn-sage btn-sm">Sound call</button></div>
+    </div>
+
+    <div class="team-card judgment">
+      <div class="team-name"><span class="team-icon">⚖️</span>Rekha Sharma — Judgment call</div>
+      <div class="team-text">Gave a regular a free pastry for her birthday</div>
+      <div class="team-meta">Yesterday</div>
+      <div class="row2"><button class="btn btn-ghost btn-sm">Better approach</button><button class="btn btn-sage btn-sm">Sound call</button></div>
+    </div>
+
+    <div class="team-card recognition">
+      <div class="team-name"><span class="team-icon">⭐</span>Rekha — Recognition</div>
+      <div class="team-text">3rd time this month handling a difficult customer calmly, no escalation</div>
+      <div class="team-meta">Pattern detected · visibility only, no action needed</div>
+    </div>
+
+    <div class="team-card coaching">
+      <div class="team-name"><span class="team-icon">🧭</span>Sneha — Coaching</div>
+      <div class="team-text">3rd "can't complete" on closing checklist items this week</div>
+      <div class="team-meta">Pattern detected · consider a conversation</div>
+    </div>
+
+    <div class="team-card">
+      <div class="team-name"><span class="team-icon">🔧</span>Open, floor-handled</div>
+      <div class="team-text">Grinder making a grinding noise — SOP covers it, staff resolving</div>
+      <div class="team-meta">Aman · 11:40 AM · visibility only, moves to Home once resolved</div>
+    </div>
+
+    <div class="team-card gap">
+      <div class="team-name"><span class="team-icon">📚</span>Training gap</div>
+      <div class="team-text">Menu substitution questions asked 3 times this week by different staff</div>
+      <div class="team-meta">Recurrence signal</div>
+      <button class="btn btn-copper btn-sm">Create task from this — schedule refresher</button>
+    </div>
+  </div>
+
+  <!-- SHIFT -->
+  <div class="screen" id="screen-shift">
+    <h2 class="serif" style="font-size:17px;margin-bottom:10px;">Shift</h2>
+    <div class="scope-toggle">
+      <div class="scope-btn on">Mine</div>
+      <div class="scope-btn">Outlet</div>
+    </div>
+    <div class="weekstrip">
+      <div class="daychip"><div class="d">Mon</div><div class="n">1</div></div>
+      <div class="daychip"><div class="d">Tue</div><div class="n">2</div></div>
+      <div class="daychip"><div class="d">Wed</div><div class="n">3</div></div>
+      <div class="daychip today"><div class="d">Thu</div><div class="n">4</div></div>
+      <div class="daychip"><div class="d">Fri</div><div class="n">5</div></div>
+      <div class="daychip"><div class="d">Sat</div><div class="n">6</div></div>
+      <div class="daychip"><div class="d">Sun</div><div class="n">7</div></div>
+    </div>
+    <div class="shift-card">
+      <div class="label">Today · in progress</div>
+      <div class="time">10:00 AM – 8:00 PM</div>
+      <button class="btn btn-copper" style="margin-top:10px;">End shift</button>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="screen" id="screen-reports">
+    <h2 class="serif" style="font-size:17px;margin-bottom:10px;">Reports</h2>
+    <div class="rtabs">
+      <div class="rtab on">Insights</div>
+      <div class="rtab">My reports</div>
+      <div class="rtab">Org reports</div>
+    </div>
+    <div class="insight-card">
+      <div class="insight-src">WEEKLY WASTE REPORT</div>
+      <div class="insight-text">Milk wastage up 22% vs last week, Tue–Wed mornings</div>
+      <button class="btn btn-copper btn-sm">Create task</button>
+    </div>
+    <div class="insight-card">
+      <div class="insight-src">CROSS-SOURCE</div>
+      <div class="insight-text">3 knowledge gaps logged this week, all menu-related</div>
+      <button class="btn btn-copper btn-sm">Create task</button>
+    </div>
+  </div>
+
+  <!-- PROFILE / ADMIN -->
+  <div class="screen" id="screen-profile-content">
+    <h2 class="serif" style="font-size:17px;margin-bottom:12px;">Profile</h2>
+    <div class="card">
+      <div class="admin-row"><span>Priya Menon</span><span class="admin-meta">Outlet Manager</span></div>
+    </div>
+    <div class="section-label"><span>Org chart</span></div>
+    <div class="card">
+      <div class="admin-row"><span class="admin-title">Outlet Manager</span><span class="admin-meta">Priya</span></div>
+      <div class="admin-row"><span class="admin-title">Captain</span><span class="admin-meta">Aman</span></div>
+      <div class="admin-row"><span class="admin-title">Biller</span><span class="admin-meta vacancy">Vacant</span></div>
+      <div class="admin-row" style="cursor:pointer;"><span style="color:var(--copper-dark);font-size:12.5px;">+ Add user</span></div>
+    </div>
+    <div class="section-label"><span>POS sync</span></div>
+    <div class="card">
+      <div class="admin-row"><div><span class="status-dot ok"></span>Petpooja — connected</div><span class="admin-meta">2 min ago</span></div>
+    </div>
+    <div class="section-label"><span>Compliance</span></div>
+    <div class="card">
+      <div class="admin-row"><span class="admin-title">FSSAI renewal</span><span class="admin-meta vacancy">Due in 12 days</span></div>
+      <div class="admin-row" style="cursor:pointer;"><span style="color:var(--copper-dark);font-size:12.5px;">+ Add compliance item</span></div>
+    </div>
+    <div class="section-label"><span>Machines, vendors, menu</span></div>
+    <div class="card">
+      <div class="admin-row"><span class="admin-title">Machines</span><span class="admin-meta">2 registered</span></div>
+      <div class="admin-row"><span class="admin-title">Vendors</span><span class="admin-meta">5 registered</span></div>
+      <div class="admin-row"><span class="admin-title">Menu items</span><span class="admin-meta">23 items</span></div>
+    </div>
+  </div>
+
+  <div class="bottomnav">
+    <div class="navitem active" onclick="showScreen('screen-home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Home</span></div>
+    <div class="navitem" onclick="showScreen('screen-tasks')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><polyline points="8 12 11 15 16 9"/></svg><span>Tasks</span></div>
+    <div class="navitem" onclick="showScreen('screen-shift')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Shift</span></div>
+    <div class="navitem" onclick="showScreen('screen-team')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M17 11a4 4 0 1 0-4-4"/><path d="M1 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg><span>Team</span></div>
+    <div class="navitem" onclick="showScreen('screen-reports')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 3 5-8"/></svg><span>Reports</span></div>
+    <div class="navitem" onclick="showScreen('screen-profile-content')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span>Profile</span></div>
+  </div>
+</div>
+
+<script>
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    var target = document.getElementById(id);
+    if(target) target.classList.add('active');
+    document.querySelectorAll('.navitem').forEach(n => n.classList.remove('active'));
+    if(event && event.currentTarget && event.currentTarget.classList.contains('navitem')){
+      event.currentTarget.classList.add('active');
+    }
+  }
+  function toggleChip(el){
+    el.parentElement.querySelectorAll('.fchip').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+  }
+  function toggleTab(el){
+    el.parentElement.querySelectorAll('.ttab').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+  }
+  function archiveCard(el){
+    el.closest('.swipe-card').style.opacity = '0';
+    setTimeout(function(){ el.closest('.swipe-card').remove(); }, 200);
+  }
+</script>
+
+</body>
+</html>

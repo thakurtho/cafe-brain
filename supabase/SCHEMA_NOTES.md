@@ -5,6 +5,66 @@ doc referenced it without defining it, or because the dummy data needed a
 column the doc's field list didn't mention. Nothing here was guessed
 silently — flagging it all here for the table-structure sanity check.
 
+- **Tell rebuild against Schema Living Doc v4** (migration `20260915120000`)
+  — v4's central correction is that content type, not subject, decides
+  where a Tell goes; subject just rides along for filtering. Confirmed
+  scope with you before building:
+  - `observations` and `fyis` merged into one `logs` table (v4 no longer
+    distinguishes them). Same ids preserved across the merge so
+    `patterns.observation_ids` and any existing `session_classifications`
+    rows keep resolving. `tasks.source_observation_id` renamed to
+    `source_log_id` and its FK repointed at `logs`.
+  - `classification_type` renamed `task` → `task_request`, added `log` and
+    `judgment_call`. `observation`, `fyi`, and `pattern` are left in the
+    enum, just unused going forward — `pattern` specifically because v4
+    moves pattern detection to a separate async/periodic scan (§6) that
+    this pass doesn't build; a per-session Tell never produces one anymore.
+  - New `subject_tag` enum, all 12 categories from v4's entity/process
+    reference table, added as a `subject` column on `logs`, `incidents`,
+    `judgment_calls`, and `tasks`.
+  - Entity resolution now covers all 7 entity-subjects, not just
+    machine/customer. Two of them — Inventory/Stock and Facility/Premises —
+    have no basis anywhere in the schema or the 8 dummy-data docs (the SOPs
+    doc only mentions "milk stock check" and "dairy stock" as checklist
+    line items, never a named list). Chose (your call) to add real
+    `inventory_items`/`facility_areas` tables with a small hand-written
+    seed list rather than leave these two subject-tag-only — inventory
+    items are grounded in what's actually named elsewhere (oat milk,
+    vanilla syrup from `01_Menu_and_Recipes.md`'s recipe variants; milk,
+    coffee beans, sugar, napkins, stirrers from the checklists); facility
+    areas have no grounding at all and are a plain placeholder set
+    (Seating Area, Counter, Storage Room, Restroom) — correct these once a
+    real list exists.
+  - Tell is now a real multi-turn conversation — the model can ask a
+    follow-up (e.g. "is it fixed now?") before classifying, and one session
+    can produce more than one content type (e.g. a resolved incident
+    that's also a judgment call), both called out explicitly in v4 §0/§2.
+    Follow-ups are capped at 2 per session to guarantee termination.
+    Tool-use calls are translated to plain assistant text before being
+    persisted to `messages` — never stored or replayed as raw `tool_use`
+    blocks — same convention `sendDrillDownMessage` already used.
+  - Safety/injury hard-forces `response_type = 'manager_must_engage'` in
+    application code, not just via prompt wording — v4 §2 is explicit this
+    always overrides the normal floor/manager split.
+  - A wastage/spoilage log also opens a `wastage_entries` row (pending,
+    Approve/Review only) per v4 §1 — a routine stock check is not wastage,
+    only an actual loss.
+  - **Deliberately not built in this pass** (flagged to you before
+    starting, confirmed as out of scope): Ask's own classification
+    collapse into the same pipeline (v4 §7); the async Pattern &
+    Knowledge-gap scan (v4 §6, entirely new, periodic, cross-session); the
+    new **Team** manager screen (judgment calls, person-recurrence flags,
+    training-gap flags, open floor-handled incidents have nowhere to
+    display yet — they're still written to the DB correctly, just not
+    surfaced); and the unified "Create task from this" escalation/linking
+    mechanism (v4 §9), including `source_knowledge_gap_id` and
+    `blocked_by_task_id`.
+  - A minimal **Home** updates feed was added (`app/home-feed.tsx`,
+    `app/home-data.ts`) since nothing displayed logs or resolved incidents
+    anywhere before this — shows both, tagged by subject, manual archive
+    per log (v4 §1: "Drag-to-archive is a manual, per-item action... never
+    automatic").
+
 - **Task completion review** (migration `20260914110000`) — a task
   requiring proof no longer goes straight to Done on submission; it lands
   `completion_status = 'pending_review'` (status stays `'approved'`
@@ -210,14 +270,20 @@ silently — flagging it all here for the table-structure sanity check.
   checklists, not pre-split rows.
 
 ## Intentionally left empty by the seed script
-`sessions`, `messages`, `session_classifications`, `observations`, `fyis`,
+`sessions`, `messages`, `session_classifications`, `logs`,
 `patterns`, `tasks`, `incidents`, `judgment_calls`, `knowledge_gaps`,
 `wastage_entries`, `pos_permissions`, `pos_synced_tasks`,
 `scheduled_shifts`, `shift_openings`, `shift_handovers`,
 `checklist_completions`, `entity_links`, `report_definitions`,
 `report_instances` — all migrated, none seeded. The 8 dummy-data docs don't
 contain any session/task/shift-history data to seed them with; inventing
-fake operational history wasn't part of the brief.
+fake operational history wasn't part of the brief. (`observations`/`fyis`
+were on this list too, before the Tell v4 rebuild merged them into `logs`
+and dropped both tables.)
+
+`inventory_items` and `facility_areas` are the exception added by that same
+rebuild — small hand-written seed lists, see the note above, since neither
+table has a real source in the original 8 docs.
 
 ## RLS scope
 Every outlet-scoped table: visible/writable if it's your own `outlet_id`,

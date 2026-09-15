@@ -38,10 +38,14 @@ async function buildEntityContext(
       .single();
     if (!pattern) return "This pattern no longer exists.";
 
+    // observation_ids now points at logs post-v4-rebuild (observations was
+    // merged into logs, same ids preserved) — column name kept as-is since
+    // the async pattern scan that owns this table is still v1-shaped and
+    // out of scope for the rebuild.
     let observationsText = "(no observations linked)";
     if (pattern.observation_ids && pattern.observation_ids.length > 0) {
       const { data: obs } = await supabase
-        .from("observations")
+        .from("logs")
         .select("summary, created_at")
         .in("id", pattern.observation_ids);
       if (obs && obs.length > 0) {

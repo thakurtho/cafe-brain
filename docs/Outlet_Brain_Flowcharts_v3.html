@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Outlet Brain -- Verified Flowcharts</title>
+<style>
+  body{font-family:'Helvetica Neue',Arial,sans-serif;background:#F3EEE4;padding:40px;color:#241F1C;}
+  h1{font-size:24px;margin-bottom:8px;}
+  .sub{color:#8A8375;font-size:13px;margin-bottom:28px;}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:36px;font-size:12px;}
+  .legend span{display:flex;align-items:center;gap:6px;}
+  .swatch{width:14px;height:14px;border-radius:4px;display:inline-block;border:2px solid;}
+  .panel{background:#fff;border:2px solid #241F1C;border-radius:14px;padding:24px;margin-bottom:40px;overflow-x:auto;}
+  h2{font-size:16px;margin:0 0 16px;text-transform:uppercase;letter-spacing:0.03em;color:#7A4413;}
+</style>
+</head>
+<body>
+
+<h1>Outlet Brain -- Four Closed-Loop Flows</h1>
+<div class="sub">Every box position and arrow below is computed from a grid layout and checked programmatically for overlaps -- nothing is hand-eyeballed.</div>
+
+<div class="legend">
+  <span><span class="swatch" style="background:#221D19;border-color:#221D19;"></span> Start</span>
+  <span><span class="swatch" style="background:#F3D9BE;border-color:#B5651D;"></span> AI decision</span>
+  <span><span class="swatch" style="background:#E3EAF2;border-color:#3D5A80;"></span> Manager-facing</span>
+  <span><span class="swatch" style="background:#E1EAE0;border-color:#4B6B4E;"></span> Good / positive</span>
+  <span><span class="swatch" style="background:#F5DAD7;border-color:#A83B32;"></span> Attention needed</span>
+  <span><span class="swatch" style="background:#4B6B4E;border-color:#4B6B4E;"></span> Loop closed</span>
+  <span><span class="swatch" style="background:#EFE3F5;border-color:#6B3FA0;"></span> Pointer to another flow</span>
+</div>
+
+<div class="panel"><h2>Flow 1 -- Tell (content type branching)</h2><svg viewBox="0 0 1642 1695" width="1642" height="1695" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="arrow-TELLfulldetail" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8A8375"/></marker></defs>
+<path d="M720,133 L720,207" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M720,263 L720,349" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M664.5077720207254,410.8031088082902 L288.46153846153845,545" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M691.44,421.576 L576.1538461538462,545" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M748.56,421.576 L863.8461538461538,545" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M775.4922279792746,410.8031088082902 L1151.5384615384614,545" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M210,601 L210,692" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M210,792 L210,882" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M210,966 L210,1051" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M550,601 L550,700" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M550,784 L550,874" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<rect x="540.7" y="820" width="18.6" height="14" fill="#F3EEE4"/><text x="550" y="831" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">yes</text>
+<path d="M550,974 L550,1065" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M655,742 L1125,742" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<rect x="883.8" y="733" width="12.4" height="14" fill="#F3EEE4"/><text x="890" y="744" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">no</text>
+<path d="M1230,784 L1230,882" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<rect x="1199" y="824" width="62" height="14" fill="#F3EEE4"/><text x="1230" y="835" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">either way</text>
+<path d="M1210.1941747572816,958.0776699029126 L987.0598290598292,1342" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<rect x="1058.3270019085555" y="1141.0388349514562" width="80.60000000000001" height="14" fill="#F3EEE4"/><text x="1098.6270019085555" y="1152.0388349514562" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">floor_handles</text>
+<path d="M1249.8058252427184,958.0776699029126 L1464.2222222222222,1327" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<rect x="1310.5140237324704" y="1133.5388349514562" width="93" height="14" fill="#F3EEE4"/><text x="1357.0140237324704" y="1144.5388349514562" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">mgr_must_engage</text>
+<path d="M958.0000000000001,1442 L958.0000000000001,1571" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M1502,1457 L1502,1571" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M890,601 L890,707" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M890,777 L890,882" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M874.3076923076923,966 L835.0769230769231,1071" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M984.1538461538462,966 L1219.5384615384614,1071" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M837.2564102564103,1141 L871.6923076923077,1220" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M1206.4615384615386,1141 L990,1223.764705882353" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<path d="M1193.3846153846155,601 L264.9230769230769,1311" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TELLfulldetail)"/>
+<rect x="620" y="77" width="200" height="56" rx="9" fill="#221D19" stroke="#221D19" stroke-width="2"/>
+<text x="720" y="102.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Tell — one button, no</text>
+<text x="720" y="115.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">employee categorization</text>
+<rect x="620" y="207" width="200" height="56" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="720" y="219.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Session runs — AI may ask</text>
+<text x="720" y="232.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">follow-ups within it (e.g.</text>
+<text x="720" y="245.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">"is it fixed now? who</text>
+<text x="720" y="258.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">fixed it?")</text>
+<polygon points="720,349 825,391 720,433 615,391" fill="#F3D9BE" stroke="#B5651D" stroke-width="2"/>
+<text x="720" y="369" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">AI classifies at</text>
+<text x="720" y="382" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">session close — a</text>
+<text x="720" y="395" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">session can produce</text>
+<text x="720" y="408" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">MORE THAN ONE content</text>
+<text x="720" y="421" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">type</text>
+<rect x="110" y="545" width="200" height="56" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="210" y="577" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">LOG</text>
+<rect x="450" y="545" width="200" height="56" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="550" y="577" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">INCIDENT</text>
+<rect x="790" y="545" width="200" height="56" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="890" y="577" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">JUDGMENT CALL</text>
+<rect x="1130" y="545" width="200" height="56" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="1230" y="577" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">TASK REQUEST</text>
+<rect x="110" y="692" width="200" height="100" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="210" y="700.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Routes by subject:</text>
+<text x="210" y="713.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">wastage/spoilage -&gt;</text>
+<text x="210" y="726.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">wastage_entries; vendor &amp;</text>
+<text x="210" y="739.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">customer -&gt; mgr-visible</text>
+<text x="210" y="752.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">log; general -&gt; Outlet</text>
+<text x="210" y="765.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Updates. (Full mapping:</text>
+<text x="210" y="778.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Session Classification</text>
+<text x="210" y="791.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Reference doc)</text>
+<rect x="110" y="882" width="200" height="84" rx="9" fill="#E3EAF2" stroke="#3D5A80" stroke-width="2"/>
+<text x="210" y="908.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Wastage specifically: sits</text>
+<text x="210" y="921.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">in Approve/Review ONLY</text>
+<text x="210" y="934.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">while pending -- not shown</text>
+<text x="210" y="947.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">on Home yet</text>
+<rect x="110" y="1051" width="200" height="84" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="210" y="1077.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Once approved &amp; synced to</text>
+<text x="210" y="1090.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">POS -&gt; moves to Home. Also</text>
+<text x="210" y="1103.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">feeds async Pattern/Gap</text>
+<text x="210" y="1116.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">scan (Flow 4)</text>
+<polygon points="550,700 655,742 550,784 445,742" fill="#F3D9BE" stroke="#B5651D" stroke-width="2"/>
+<text x="550" y="739.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Resolved during the</text>
+<text x="550" y="752.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">session itself?</text>
+<rect x="450" y="874" width="200" height="100" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="550" y="895.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">YES -- logged as resolved</text>
+<text x="550" y="908.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">incident, outcome recorded</text>
+<text x="550" y="921.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">-&gt; Home. Still feeds</text>
+<text x="550" y="934.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">pattern-scan. May ALSO be</text>
+<text x="550" y="947.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">a judgment_call in</text>
+<text x="550" y="960.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">parallel (see that lane)</text>
+<rect x="450" y="1065" width="200" height="56" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="550" y="1090.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">CLOSED -- lands on Home,</text>
+<text x="550" y="1103.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">no decision needed</text>
+<polygon points="1230,700 1335,742 1230,784 1125,742" fill="#F3D9BE" stroke="#B5651D" stroke-width="2"/>
+<text x="1230" y="733" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">NO, unresolved --</text>
+<text x="1230" y="746" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">involves safety /</text>
+<text x="1230" y="759" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">injury?</text>
+<polygon points="1230,882 1335,924 1230,966 1125,924" fill="#F3D9BE" stroke="#B5651D" stroke-width="2"/>
+<text x="1230" y="915" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">response_type? (safety</text>
+<text x="1230" y="928" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">always forces</text>
+<text x="1230" y="941" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">mgr_must_engage)</text>
+<rect x="858.0000000000001" y="1342" width="200" height="100" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="958.0000000000001" y="1370" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">floor_handles -- lands in</text>
+<text x="958.0000000000001" y="1383" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Team screen the entire</text>
+<text x="958.0000000000001" y="1396" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">time it's open, pure</text>
+<text x="958.0000000000001" y="1409" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">visibility, staff resolves</text>
+<text x="958.0000000000001" y="1422" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">it themselves</text>
+<rect x="1402" y="1327" width="200" height="130" rx="9" fill="#E3EAF2" stroke="#3D5A80" stroke-width="2"/>
+<text x="1502" y="1357" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">manager_must_engage --</text>
+<text x="1502" y="1370" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">system shows evidence + a</text>
+<text x="1502" y="1383" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">suggested fix (e.g. "Book</text>
+<text x="1502" y="1396" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">AC technician"). Manager</text>
+<text x="1502" y="1409" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">accepts/edits/replaces via</text>
+<text x="1502" y="1422" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">"Create task from this"</text>
+<text x="1502" y="1435" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">(see Flow 4, sec 9)</text>
+<rect x="858.0000000000001" y="1571" width="200" height="84" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="958.0000000000001" y="1604" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Marked resolved -&gt; moves</text>
+<text x="958.0000000000001" y="1617" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">to Home. One clean</text>
+<text x="958.0000000000001" y="1630" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">transition.</text>
+<rect x="1402" y="1571" width="200" height="84" rx="9" fill="#E3EAF2" stroke="#3D5A80" stroke-width="2"/>
+<text x="1502" y="1604" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Task created, linked via</text>
+<text x="1502" y="1617" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">source_incident_id -&gt; Task</text>
+<text x="1502" y="1630" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">flow (Flow 3)</text>
+<rect x="790" y="707" width="200" height="70" rx="9" fill="#F5DAD7" stroke="#A83B32" stroke-width="2"/>
+<text x="890" y="733" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Always attributed -- a</text>
+<text x="890" y="746" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">discretionary choice is</text>
+<text x="890" y="759" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">inherently personal</text>
+<rect x="790" y="882" width="200" height="84" rx="9" fill="#E3EAF2" stroke="#3D5A80" stroke-width="2"/>
+<text x="890" y="908.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Lands in Manager's TEAM</text>
+<text x="890" y="921.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">screen -- never Task</text>
+<text x="890" y="934.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">screen, nothing</text>
+<text x="890" y="947.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">operational to approve</text>
+<rect x="722" y="1071" width="200" height="70" rx="9" fill="#E1EAE0" stroke="#4B6B4E" stroke-width="2"/>
+<text x="822" y="1110" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Manager: sound call</text>
+<rect x="1198" y="1071" width="200" height="70" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="1298" y="1103.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Manager: here's a better</text>
+<text x="1298" y="1116.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">way</text>
+<rect x="790" y="1220" width="200" height="84" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="890" y="1253" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Recorded in the playbook</text>
+<text x="890" y="1266" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">-- coaching-framed, never</text>
+<text x="890" y="1279" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">disciplinary. CLOSED.</text>
+<rect x="-20" y="1311" width="460" height="84" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="210" y="1331" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">TASK REQUEST content type</text>
+<text x="210" y="1344" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">routes into the Task flow</text>
+<text x="210" y="1357" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">(Flow 3) -- same</text>
+<text x="210" y="1370" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">creation/completion logic</text>
+<text x="210" y="1383" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">as a directly-created task</text>
+</svg></div>
+<div class="panel"><h2>Flow 2 -- Ask</h2><svg viewBox="0 0 1239 1053" width="1239" height="1053" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="arrow-ASKfulldetail" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8A8375"/></marker></defs>
+<path d="M550,133 L550,226" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-ASKfulldetail)"/>
+<path d="M650,261 L989,261" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-ASKfulldetail)"/>
+<rect x="785.4" y="252" width="68.2" height="14" fill="#F3EEE4"/><text x="819.5" y="263" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">in parallel</text>
+<path d="M1094,306 L1094,401" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-ASKfulldetail)"/>
+<rect x="1084.7" y="344.5" width="18.6" height="14" fill="#F3EEE4"/><text x="1094" y="355.5" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">yes</text>
+<path d="M550,296 L550,401" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-ASKfulldetail)"/>
+<path d="M513.939393939394,470.57575757575756 L377.38461538461536,575" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-ASKfulldetail)"/>
+<rect x="436.36200466200467" y="513.7878787878788" width="18.6" height="14" fill="#F3EEE4"/><text x="445.6620046620047" y="524.7878787878788" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">yes</text>
+<path d="M582.5037936267071,471.99848254931715 L706.9230769230769,583" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-ASKfulldetail)"/>
+<rect x="638.5134352748919" y="518.4992412746585" width="12.4" height="14" fill="#F3EEE4"/><text x="644.7134352748919" y="529.4992412746585" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">no</text>
+<path d="M754,667 L754,752" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-ASKfulldetail)"/>
+<path d="M754,836 L754,913" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-ASKfulldetail)"/>
+<rect x="450" y="77" width="200" height="56" rx="9" fill="#221D19" stroke="#221D19" stroke-width="2"/>
+<text x="550" y="109" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Ask</text>
+<rect x="450" y="226" width="200" height="70" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="550" y="258.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">AI searches recipes / SOPs</text>
+<text x="550" y="271.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">/ machines / customer data</text>
+<polygon points="1094,216 1199,261 1094,306 989,261" fill="#F3D9BE" stroke="#B5651D" stroke-width="2"/>
+<text x="1094" y="239" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Does the question</text>
+<text x="1094" y="252" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">itself narrate an</text>
+<text x="1094" y="265" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">operational fact?</text>
+<text x="1094" y="278" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">(e.g. "it just</text>
+<text x="1094" y="291" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">crashed")</text>
+<rect x="994" y="401" width="200" height="84" rx="9" fill="#F5DAD7" stroke="#A83B32" stroke-width="2"/>
+<text x="1094" y="434" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">YES -- also extracted and</text>
+<text x="1094" y="447" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">logged as incident/log,</text>
+<text x="1094" y="460" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">same as a Tell would be</text>
+<polygon points="550,401 655,443 550,485 445,443" fill="#F3D9BE" stroke="#B5651D" stroke-width="2"/>
+<text x="550" y="447" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Found a real answer?</text>
+<rect x="162" y="575" width="300" height="100" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="312" y="596.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Answer given. Session</text>
+<text x="312" y="609.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">still classified</text>
+<text x="312" y="622.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">(content_type=query,</text>
+<text x="312" y="635.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">always anonym, file_only)</text>
+<text x="312" y="648.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">even though nothing acts</text>
+<text x="312" y="661.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">on it.</text>
+<rect x="654" y="583" width="200" height="84" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="754" y="616" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Employee told immediately:</text>
+<text x="754" y="629" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">"I don't have that -- ask</text>
+<text x="754" y="642" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">your manager"</text>
+<rect x="654" y="752" width="200" height="84" rx="9" fill="#E3EAF2" stroke="#3D5A80" stroke-width="2"/>
+<text x="754" y="785" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Separately, silently</text>
+<text x="754" y="798" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">logged as knowledge_gap,</text>
+<text x="754" y="811" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">routed to manager async</text>
+<rect x="594" y="913" width="320" height="100" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="754" y="934.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Manager answers later -&gt;</text>
+<text x="754" y="947.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">becomes new SOP/training</text>
+<text x="754" y="960.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">content -&gt; feeds back into</text>
+<text x="754" y="973.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Ask's knowledge base.</text>
+<text x="754" y="986.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Also: Pattern/Gap flow</text>
+<text x="754" y="999.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">(Flow 4).</text>
+</svg></div>
+<div class="panel"><h2>Flow 3 -- Task (creation converges, completion diverges)</h2><svg viewBox="0 0 1370 1448" width="1370" height="1448" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="arrow-TASKfulldetail" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8A8375"/></marker></defs>
+<path d="M922.6923076923077,140 L1031.44,256.424" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M1187.967032967033,150 L1088.56,256.424" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M259.03846153846155,140 L661.1538461538462,427" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<rect x="398.09615384615387" y="274.5" width="124" height="14" fill="#F3EEE4"/><text x="460.09615384615387" y="285.5" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">immediately, PRIVATE</text>
+<path d="M566.3461538461538,140 L700.3846153846154,427" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<rect x="558.9653846153846" y="274.5" width="148.8" height="14" fill="#F3EEE4"/><text x="633.3653846153845" y="285.5" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">immediately, mgr-visible</text>
+<path d="M1015.0943396226415,311.0377358490566 L798.4615384615385,427" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<rect x="860.27793904209" y="360.0188679245283" width="93" height="14" fill="#F3EEE4"/><text x="906.77793904209" y="371.0188679245283" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">now mgr-visible</text>
+<path d="M720,511 L720,610" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M641.5384615384615,666 L308.0769230769231,785" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M693.8461538461538,666 L582.6923076923077,785" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M746.1538461538462,666 L857.3076923076923,785" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M798.4615384615385,666 L1131.923076923077,785" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M210,855 L210,941" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M550,855 L550,941" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M514.792899408284,1011 L415.20710059171597,1110" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M585.207100591716,1011 L674.7337278106509,1100" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M720,1100 L720,638 L820,638" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<rect x="645.6" y="629" width="148.8" height="14" fill="#F3EEE4"/><text x="720" y="640" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">reopens -&gt; attempt again</text>
+<path d="M920.5128205128206,855 L982.4102564102564,926" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M1026,1026 L1026,1129" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M1026,1129 L1026,638 L760,694" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<rect x="979.5" y="629" width="93" height="14" fill="#F3EEE4"/><text x="1026" y="640" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">back to attempt</text>
+<path d="M1230,855 L1230,941" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M1230,1011 L1230,1110" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<path d="M1230,1110 L1230,469 L820,469" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-TASKfulldetail)"/>
+<rect x="1180.4" y="460" width="99.2" height="14" fill="#F3EEE4"/><text x="1230" y="471" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">loops until done</text>
+<rect x="110" y="70" width="200" height="70" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="210" y="102.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Self-added (employee, for</text>
+<text x="210" y="115.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">themselves)</text>
+<rect x="450" y="70" width="200" height="70" rx="9" fill="#E3EAF2" stroke="#3D5A80" stroke-width="2"/>
+<text x="550" y="102.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Manager-created (for self</text>
+<text x="550" y="115.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">or team)</text>
+<rect x="790" y="70" width="200" height="70" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="890" y="102.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Staff-suggested for</text>
+<text x="890" y="115.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">someone else</text>
+<rect x="1130" y="60" width="200" height="90" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="1230" y="96" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">System-generated (from an</text>
+<text x="1230" y="109" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">approved pattern or</text>
+<text x="1230" y="122" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">unresolved incident)</text>
+<polygon points="1060,245 1165,287 1060,329 955,287" fill="#F3D9BE" stroke="#B5651D" stroke-width="2"/>
+<text x="1060" y="284.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Manager approves &amp;</text>
+<text x="1060" y="297.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">assigns</text>
+<rect x="620" y="427" width="200" height="84" rx="9" fill="#E1EAE0" stroke="#4B6B4E" stroke-width="2"/>
+<text x="720" y="466.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">ONE Active Task -- due</text>
+<text x="720" y="479.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">date always required</text>
+<rect x="620" y="610" width="200" height="56" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="720" y="642" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Assignee attempts the task</text>
+<rect x="110" y="785" width="200" height="70" rx="9" fill="#E1EAE0" stroke="#4B6B4E" stroke-width="2"/>
+<text x="210" y="824" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Self task, marked done</text>
+<rect x="450" y="785" width="200" height="70" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="550" y="817.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Done, with proof</text>
+<text x="550" y="830.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">(photo/video/text/audio)</text>
+<rect x="790" y="785" width="200" height="70" rx="9" fill="#F5DAD7" stroke="#A83B32" stroke-width="2"/>
+<text x="890" y="817.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Genuinely blocked (e.g.</text>
+<text x="890" y="830.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">missing part)</text>
+<rect x="1130" y="785" width="200" height="70" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="1230" y="824" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Won't / can't right now</text>
+<rect x="110" y="941" width="200" height="70" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="210" y="973.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">CLOSED -- no stake, no</text>
+<text x="210" y="986.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">check</text>
+<rect x="450" y="941" width="200" height="70" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="550" y="973.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">1-in-5 round-robin</text>
+<text x="550" y="986.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">spot-check</text>
+<rect x="280" y="1110" width="200" height="70" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="380" y="1149" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Accepted -&gt; Done. CLOSED.</text>
+<rect x="620" y="1100" width="200" height="90" rx="9" fill="#F5DAD7" stroke="#A83B32" stroke-width="2"/>
+<text x="720" y="1136" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Rejected -&gt; reopens,</text>
+<text x="720" y="1149" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">history kept</text>
+<text x="720" y="1162" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">(reopened_from_completion_id)</text>
+<rect x="926" y="926" width="200" height="100" rx="9" fill="#E3EAF2" stroke="#3D5A80" stroke-width="2"/>
+<text x="1026" y="960.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">New task created FOR</text>
+<text x="1026" y="973.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">MANAGER (e.g. procure</text>
+<text x="1026" y="986.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">part), original tagged</text>
+<text x="1026" y="999.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">blocked_by_task_id</text>
+<rect x="926" y="1129" width="200" height="84" rx="9" fill="#E1EAE0" stroke="#4B6B4E" stroke-width="2"/>
+<text x="1026" y="1168.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Once blocker closes,</text>
+<text x="1026" y="1181.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">original AUTO-REOPENS</text>
+<rect x="1130" y="941" width="200" height="70" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="1230" y="973.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Reason logged plainly, no</text>
+<text x="1230" y="986.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">fault attached</text>
+<rect x="1130" y="1110" width="200" height="70" rx="9" fill="#E1EAE0" stroke="#4B6B4E" stroke-width="2"/>
+<text x="1230" y="1149" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Passes to next shift as-is</text>
+<rect x="410" y="1298" width="620" height="110" rx="9" fill="#EFE3F5" stroke="#6B3FA0" stroke-width="2"/>
+<text x="720" y="1298.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">If the completion or</text>
+<text x="720" y="1311.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">can't-complete</text>
+<text x="720" y="1324.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">CONVERSATION surfaces new</text>
+<text x="720" y="1337.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">content, that content gets</text>
+<text x="720" y="1350.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">its OWN separate session</text>
+<text x="720" y="1363.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">-- classified</text>
+<text x="720" y="1376.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">independently via the Tell</text>
+<text x="720" y="1389.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">flow. It does NOT inherit</text>
+<text x="720" y="1402.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">this task's (always-named)</text>
+<text x="720" y="1415.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">visibility.</text>
+</svg></div>
+<div class="panel"><h2>Flow 4 -- Pattern &amp; Knowledge Gap (async, periodic)</h2><svg viewBox="0 0 1506 1781" width="1506" height="1781" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="arrow-PATTERNKNOWLEDGEGAPasyncperiodic" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8A8375"/></marker></defs>
+<path d="M625.8461538461538,147 L366.2141230068337,262.8162490508732" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<path d="M814.1538461538462,147 L1078.359212050985,264.85631517960604" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<path d="M277.08557457212714,320.37408312958433 L160.30769230769232,432" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<rect x="209.39663343990972" y="367.18704156479214" width="18.6" height="14" fill="#F3EEE4"/><text x="218.69663343990973" y="378.18704156479214" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">yes</text>
+<path d="M108,532 L108,622" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<path d="M108,706 L108,778" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<rect x="70.8" y="733" width="74.4" height="14" fill="#F3EEE4"/><text x="108" y="744" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">action taken</text>
+<path d="M163.6260434056761,683.7495826377295 L484,797.4957983193277" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<rect x="295.9130217028381" y="731.6226904785286" width="55.800000000000004" height="14" fill="#F3EEE4"/><text x="323.81302170283806" y="742.6226904785286" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">dismissed</text>
+<path d="M179.9230769230769,888 L291.0769230769231,973" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<path d="M518.6153846153846,883 L400.9230769230769,973" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<path d="M108,664 L108,1184 L484,1184" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<rect x="58.4" y="1175" width="99.2" height="14" fill="#F3EEE4"/><text x="108" y="1186" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">ignored / recurs</text>
+<path d="M1093.5547898001378,315.22191592005515 L932.7179487179487,447" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<rect x="1000.7363692590433" y="372.1109579600276" width="24.8" height="14" fill="#F3EEE4"/><text x="1013.1363692590432" y="383.1109579600276" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">good</text>
+<path d="M1162.4452101998622,315.22191592005515 L1323.2820512820513,447" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<rect x="1211.8636307409568" y="372.1109579600276" width="62" height="14" fill="#F3EEE4"/><text x="1242.8636307409568" y="383.1109579600276" font-size="10.5" fill="#B5651D" text-anchor="middle" font-weight="600">concerning</text>
+<path d="M890,517 L890,616" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<path d="M1366,517 L1366,616" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<path d="M890,686 L890,772" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<path d="M1366,686 L1366,762" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<path d="M720,1421 L720,1500" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<path d="M720,1570 L720,1641" fill="none" stroke="#8A8375" stroke-width="1.6" marker-end="url(#arrow-PATTERNKNOWLEDGEGAPasyncperiodic)"/>
+<rect x="620" y="63" width="200" height="84" rx="9" fill="#221D19" stroke="#221D19" stroke-width="2"/>
+<text x="720" y="89.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Background scan across</text>
+<text x="720" y="102.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">recent logs / incidents /</text>
+<text x="720" y="115.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Asks -- runs periodically,</text>
+<text x="720" y="128.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">NOT per-session</text>
+<polygon points="312,237 417,287 312,337 207,287" fill="#F3D9BE" stroke="#B5651D" stroke-width="2"/>
+<text x="312" y="271.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Same THING recurring?</text>
+<text x="312" y="284.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">(never a person --</text>
+<text x="312" y="297.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">machine, vendor,</text>
+<text x="312" y="310.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">process, menu item)</text>
+<polygon points="1128,245 1233,287 1128,329 1023,287" fill="#F3D9BE" stroke="#B5651D" stroke-width="2"/>
+<text x="1128" y="284.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Same PERSON recurring</text>
+<text x="1128" y="297.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">3x on the same issue?</text>
+<rect x="8" y="432" width="200" height="100" rx="9" fill="#E3EAF2" stroke="#3D5A80" stroke-width="2"/>
+<text x="108" y="466.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">System reports evidence +</text>
+<text x="108" y="479.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">a SUGGESTED action --</text>
+<text x="108" y="492.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">never auto-executed. Lands</text>
+<text x="108" y="505.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">in Approve/Review.</text>
+<polygon points="108,622 213,664 108,706 3,664" fill="#F3D9BE" stroke="#B5651D" stroke-width="2"/>
+<text x="108" y="655" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Manager: accept, edit,</text>
+<text x="108" y="668" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">or write a DIFFERENT</text>
+<text x="108" y="681" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">action entirely</text>
+<rect x="8" y="778" width="200" height="110" rx="9" fill="#E1EAE0" stroke="#4B6B4E" stroke-width="2"/>
+<text x="108" y="811" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">"Create task from this" --</text>
+<text x="108" y="824" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">link set automatically</text>
+<text x="108" y="837" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">(source_pattern_id),</text>
+<text x="108" y="850" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">regardless of which action</text>
+<text x="108" y="863" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">was chosen</text>
+<rect x="484" y="783" width="200" height="100" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="584" y="817.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Dismissed -- one tap, no</text>
+<text x="584" y="830.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">reason required. System</text>
+<text x="584" y="843.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">logs who &amp; when; always</text>
+<text x="584" y="856.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">visible to Owner/GM</text>
+<rect x="246" y="973" width="200" height="84" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="346" y="999.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Moves to Home --</text>
+<text x="346" y="1012.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">informational, closed</text>
+<text x="346" y="1025.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">record (tagged actioned or</text>
+<text x="346" y="1038.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">dismissed)</text>
+<rect x="484" y="1134" width="200" height="100" rx="9" fill="#F5DAD7" stroke="#A83B32" stroke-width="2"/>
+<text x="584" y="1168.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Left unactioned past</text>
+<text x="584" y="1181.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">threshold, OR recurs after</text>
+<text x="584" y="1194.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">dismissal -&gt; escalates to</text>
+<text x="584" y="1207.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Owner/GM</text>
+<rect x="790" y="447" width="200" height="70" rx="9" fill="#E1EAE0" stroke="#4B6B4E" stroke-width="2"/>
+<text x="890" y="486" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Positive pattern</text>
+<rect x="1266" y="447" width="200" height="70" rx="9" fill="#F5DAD7" stroke="#A83B32" stroke-width="2"/>
+<text x="1366" y="486" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Concerning pattern</text>
+<rect x="790" y="616" width="200" height="70" rx="9" fill="#E3EAF2" stroke="#3D5A80" stroke-width="2"/>
+<text x="890" y="655" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Team screen -&gt; Recognition</text>
+<rect x="1266" y="616" width="200" height="70" rx="9" fill="#E3EAF2" stroke="#3D5A80" stroke-width="2"/>
+<text x="1366" y="655" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Team screen -&gt; Coaching</text>
+<rect x="790" y="772" width="200" height="70" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="890" y="804.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Manager can acknowledge.</text>
+<text x="890" y="817.5" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">CLOSED.</text>
+<rect x="1266" y="762" width="200" height="90" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="1366" y="798" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Manager decides whether to</text>
+<text x="1366" y="811" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">have a conversation. No</text>
+<text x="1366" y="824" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">automatic action. CLOSED.</text>
+<rect x="620" y="1337" width="200" height="84" rx="9" fill="#FFFFFF" stroke="#241F1C" stroke-width="2"/>
+<text x="720" y="1370" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Same QUESTION asked</text>
+<text x="720" y="1383" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">repeatedly (fed from Ask</text>
+<text x="720" y="1396" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">flow, Flow 2)</text>
+<rect x="620" y="1500" width="200" height="70" rx="9" fill="#E3EAF2" stroke="#3D5A80" stroke-width="2"/>
+<text x="720" y="1532.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Escalates to manager or</text>
+<text x="720" y="1545.5" font-size="11.5" fill="#241F1C" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">domain owner to answer</text>
+<rect x="550" y="1641" width="340" height="100" rx="9" fill="#4B6B4E" stroke="#4B6B4E" stroke-width="2"/>
+<text x="720" y="1669" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Becomes new</text>
+<text x="720" y="1682" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">SOP/training/recipe</text>
+<text x="720" y="1695" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">content -&gt; feeds back into</text>
+<text x="720" y="1708" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">Ask's knowledge base.</text>
+<text x="720" y="1721" font-size="11.5" fill="#FFFFFF" text-anchor="middle" font-family="Helvetica,Arial,sans-serif">CLOSED.</text>
+</svg></div>
+
+</body>
+</html>

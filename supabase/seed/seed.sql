@@ -441,6 +441,36 @@ join (values
 ) as v(topic, due_date, process_duration_days, status, proof_url) on true
 where not exists (select 1 from public.compliance_reminders cr where cr.outlet_id = t.outlet_id and cr.topic = v.topic);
 
+-- ---------------------------------------------------------------------
+-- Inventory items & facility areas — added for the Tell v4 rebuild's
+-- subject taxonomy (Schema Living Doc v4 §0). Neither has a source in the
+-- 8 dummy-data docs: this list is hand-written from item names that do
+-- appear incidentally elsewhere (oat milk / vanilla syrup in
+-- 01_Menu_and_Recipes.md's recipe variants, milk/dairy/sugar/napkins in
+-- 05_SOPs_and_Checklists.md's opening/closing checklists). Facility areas
+-- have no grounding at all — a plain, generic small set. Flagged in
+-- SCHEMA_NOTES.md; treat both as placeholders to correct once real
+-- inventory/facility lists exist.
+-- ---------------------------------------------------------------------
+
+with t as (select id as outlet_id from public.outlets where name = 'Musafir Cafe — Mussoorie')
+insert into public.inventory_items (outlet_id, name)
+select t.outlet_id, v.name
+from t
+join (values
+  ('Milk'), ('Oat Milk'), ('Coffee Beans'), ('Sugar'), ('Vanilla Syrup'), ('Napkins'), ('Stirrers')
+) as v(name) on true
+where not exists (select 1 from public.inventory_items i where i.outlet_id = t.outlet_id and i.name = v.name);
+
+with t as (select id as outlet_id from public.outlets where name = 'Musafir Cafe — Mussoorie')
+insert into public.facility_areas (outlet_id, name)
+select t.outlet_id, v.name
+from t
+join (values
+  ('Seating Area'), ('Counter'), ('Storage Room'), ('Restroom')
+) as v(name) on true
+where not exists (select 1 from public.facility_areas f where f.outlet_id = t.outlet_id and f.name = v.name);
+
 commit;
 
 -- ---------------------------------------------------------------------
@@ -463,4 +493,6 @@ union all select 'checklist_items', count(*) from public.checklist_items
 union all select 'training_modules', count(*) from public.training_modules
 union all select 'training_progress', count(*) from public.training_progress
 union all select 'compliance_reminders', count(*) from public.compliance_reminders
+union all select 'inventory_items', count(*) from public.inventory_items
+union all select 'facility_areas', count(*) from public.facility_areas
 order by table_name;

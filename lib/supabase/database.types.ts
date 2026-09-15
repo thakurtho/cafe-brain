@@ -29,7 +29,28 @@ export type SessionMode = "ask" | "tell";
 export type SessionInitiator = "BIC" | "UIC";
 export type SessionStatus = "open" | "closed";
 export type MessageSender = "user" | "assistant" | "system";
-export type ClassificationType = "observation" | "fyi" | "task" | "pattern" | "incident" | "none";
+export type ClassificationType =
+  | "observation" // unused going forward — collapsed into "log" (v4 rebuild)
+  | "fyi" // unused going forward — collapsed into "log" (v4 rebuild)
+  | "task_request"
+  | "pattern" // unused going forward — patterns now come from an async scan, not per-session classification
+  | "incident"
+  | "log"
+  | "judgment_call"
+  | "none";
+export type SubjectTag =
+  | "customer"
+  | "vendor"
+  | "staff_colleague"
+  | "equipment_machine"
+  | "recipe_menu"
+  | "inventory_stock"
+  | "facility_premises"
+  | "process_sop"
+  | "finance_billing"
+  | "compliance_safety"
+  | "schedule_roster"
+  | "competitor_market";
 export type TaskStatus = "pending_approval" | "approved" | "in_progress" | "done" | "rejected" | "blocked";
 export type CompletionMode = "manual" | "auto";
 export type IncidentStatus = "open" | "resolved";
@@ -271,25 +292,31 @@ export interface Database {
         };
         Relationships: [];
       };
-      observations: {
+      logs: {
         Row: {
-          id: string; outlet_id: string; source_session_id: string | null; entity_type: string | null;
-          entity_id: string | null; summary: string; status: string; created_at: string;
+          id: string; outlet_id: string; source_session_id: string | null; subject: SubjectTag | null;
+          entity_type: string | null; entity_id: string | null; summary: string; archived: boolean; created_at: string;
         };
         Insert: {
-          id?: string; outlet_id: string; source_session_id?: string | null; entity_type?: string | null;
-          entity_id?: string | null; summary: string; status?: string; created_at?: string;
+          id?: string; outlet_id: string; source_session_id?: string | null; subject?: SubjectTag | null;
+          entity_type?: string | null; entity_id?: string | null; summary: string; archived?: boolean; created_at?: string;
         };
         Update: {
-          id?: string; outlet_id?: string; source_session_id?: string | null; entity_type?: string | null;
-          entity_id?: string | null; summary?: string; status?: string; created_at?: string;
+          id?: string; outlet_id?: string; source_session_id?: string | null; subject?: SubjectTag | null;
+          entity_type?: string | null; entity_id?: string | null; summary?: string; archived?: boolean; created_at?: string;
         };
         Relationships: [];
       };
-      fyis: {
-        Row: { id: string; source_session_id: string | null; outlet_id: string; summary: string; created_at: string };
-        Insert: { id?: string; source_session_id?: string | null; outlet_id: string; summary: string; created_at?: string };
-        Update: { id?: string; source_session_id?: string | null; outlet_id?: string; summary?: string; created_at?: string };
+      inventory_items: {
+        Row: { id: string; outlet_id: string; name: string; created_at: string };
+        Insert: { id?: string; outlet_id: string; name: string; created_at?: string };
+        Update: { id?: string; outlet_id?: string; name?: string; created_at?: string };
+        Relationships: [];
+      };
+      facility_areas: {
+        Row: { id: string; outlet_id: string; name: string; created_at: string };
+        Insert: { id?: string; outlet_id: string; name: string; created_at?: string };
+        Update: { id?: string; outlet_id?: string; name?: string; created_at?: string };
         Relationships: [];
       };
       patterns: {
@@ -312,7 +339,7 @@ export interface Database {
       };
       tasks: {
         Row: {
-          id: string; outlet_id: string; source_session_id: string | null; source_observation_id: string | null;
+          id: string; outlet_id: string; source_session_id: string | null; source_log_id: string | null;
           source_insight_id: string | null; description: string; status: TaskStatus; assigned_to: string | null;
           created_by: string | null; self_assigned: boolean; approved_by: string | null; approved_at: string | null;
           handover_reason: string | null; handover_session_id: string | null; requires_proof: boolean;
@@ -324,11 +351,11 @@ export interface Database {
           requested_due_date: string | null; extension_reason: string | null;
           completion_status: TaskCompletionStatus | null; completion_reviewed_by: string | null;
           completion_reviewed_at: string | null; rejection_reason: string | null;
-          reopened_from_completion_id: string | null;
+          reopened_from_completion_id: string | null; subject: SubjectTag | null;
           created_at: string;
         };
         Insert: {
-          id?: string; outlet_id: string; source_session_id?: string | null; source_observation_id?: string | null;
+          id?: string; outlet_id: string; source_session_id?: string | null; source_log_id?: string | null;
           source_insight_id?: string | null; description: string; status?: TaskStatus; assigned_to?: string | null;
           created_by?: string | null; self_assigned?: boolean; approved_by?: string | null; approved_at?: string | null;
           handover_reason?: string | null; handover_session_id?: string | null; requires_proof?: boolean;
@@ -340,11 +367,11 @@ export interface Database {
           requested_due_date?: string | null; extension_reason?: string | null;
           completion_status?: TaskCompletionStatus | null; completion_reviewed_by?: string | null;
           completion_reviewed_at?: string | null; rejection_reason?: string | null;
-          reopened_from_completion_id?: string | null;
+          reopened_from_completion_id?: string | null; subject?: SubjectTag | null;
           created_at?: string;
         };
         Update: {
-          id?: string; outlet_id?: string; source_session_id?: string | null; source_observation_id?: string | null;
+          id?: string; outlet_id?: string; source_session_id?: string | null; source_log_id?: string | null;
           source_insight_id?: string | null; description?: string; status?: TaskStatus; assigned_to?: string | null;
           created_by?: string | null; self_assigned?: boolean; approved_by?: string | null; approved_at?: string | null;
           handover_reason?: string | null; handover_session_id?: string | null; requires_proof?: boolean;
@@ -356,32 +383,32 @@ export interface Database {
           requested_due_date?: string | null; extension_reason?: string | null;
           completion_status?: TaskCompletionStatus | null; completion_reviewed_by?: string | null;
           completion_reviewed_at?: string | null; rejection_reason?: string | null;
-          reopened_from_completion_id?: string | null;
+          reopened_from_completion_id?: string | null; subject?: SubjectTag | null;
           created_at?: string;
         };
         Relationships: [];
       };
       incidents: {
         Row: {
-          id: string; outlet_id: string; source_session_id: string | null; entity_type: string | null;
-          entity_id: string | null; is_safety: boolean; severity: IncidentSeverity | null; description: string;
-          status: IncidentStatus; resolved_by: string | null; resolved_at: string | null;
+          id: string; outlet_id: string; source_session_id: string | null; subject: SubjectTag | null;
+          entity_type: string | null; entity_id: string | null; is_safety: boolean; severity: IncidentSeverity | null;
+          description: string; status: IncidentStatus; resolved_by: string | null; resolved_at: string | null;
           resolution_voice_session_id: string | null; resolution_note: string | null; handover_reason: string | null;
           handover_session_id: string | null; response_type: IncidentResponseType; requires_immediate_call: boolean;
           created_at: string;
         };
         Insert: {
-          id?: string; outlet_id: string; source_session_id?: string | null; entity_type?: string | null;
-          entity_id?: string | null; is_safety?: boolean; severity?: IncidentSeverity | null; description: string;
-          status?: IncidentStatus; resolved_by?: string | null; resolved_at?: string | null;
+          id?: string; outlet_id: string; source_session_id?: string | null; subject?: SubjectTag | null;
+          entity_type?: string | null; entity_id?: string | null; is_safety?: boolean; severity?: IncidentSeverity | null;
+          description: string; status?: IncidentStatus; resolved_by?: string | null; resolved_at?: string | null;
           resolution_voice_session_id?: string | null; resolution_note?: string | null; handover_reason?: string | null;
           handover_session_id?: string | null; response_type: IncidentResponseType; requires_immediate_call?: boolean;
           created_at?: string;
         };
         Update: {
-          id?: string; outlet_id?: string; source_session_id?: string | null; entity_type?: string | null;
-          entity_id?: string | null; is_safety?: boolean; severity?: IncidentSeverity | null; description?: string;
-          status?: IncidentStatus; resolved_by?: string | null; resolved_at?: string | null;
+          id?: string; outlet_id?: string; source_session_id?: string | null; subject?: SubjectTag | null;
+          entity_type?: string | null; entity_id?: string | null; is_safety?: boolean; severity?: IncidentSeverity | null;
+          description?: string; status?: IncidentStatus; resolved_by?: string | null; resolved_at?: string | null;
           resolution_voice_session_id?: string | null; resolution_note?: string | null; handover_reason?: string | null;
           handover_session_id?: string | null; response_type?: IncidentResponseType; requires_immediate_call?: boolean;
           created_at?: string;
@@ -390,20 +417,20 @@ export interface Database {
       };
       judgment_calls: {
         Row: {
-          id: string; outlet_id: string; session_id: string; user_id: string | null; situation: string;
-          action_taken: string | null; interview_session_id: string | null; interview_qa: Json | null;
+          id: string; outlet_id: string; session_id: string; user_id: string | null; subject: SubjectTag | null;
+          situation: string; action_taken: string | null; interview_session_id: string | null; interview_qa: Json | null;
           promoted_to_pattern_id: string | null; flagged_to_manager: boolean; manager_notified_at: string | null;
           created_at: string;
         };
         Insert: {
-          id?: string; outlet_id: string; session_id: string; user_id?: string | null; situation: string;
-          action_taken?: string | null; interview_session_id?: string | null; interview_qa?: Json | null;
+          id?: string; outlet_id: string; session_id: string; user_id?: string | null; subject?: SubjectTag | null;
+          situation: string; action_taken?: string | null; interview_session_id?: string | null; interview_qa?: Json | null;
           promoted_to_pattern_id?: string | null; flagged_to_manager?: boolean; manager_notified_at?: string | null;
           created_at?: string;
         };
         Update: {
-          id?: string; outlet_id?: string; session_id?: string; user_id?: string | null; situation?: string;
-          action_taken?: string | null; interview_session_id?: string | null; interview_qa?: Json | null;
+          id?: string; outlet_id?: string; session_id?: string; user_id?: string | null; subject?: SubjectTag | null;
+          situation?: string; action_taken?: string | null; interview_session_id?: string | null; interview_qa?: Json | null;
           promoted_to_pattern_id?: string | null; flagged_to_manager?: boolean; manager_notified_at?: string | null;
           created_at?: string;
         };
@@ -667,6 +694,7 @@ export interface Database {
       session_status: SessionStatus;
       message_sender: MessageSender;
       classification_type: ClassificationType;
+      subject_tag: SubjectTag;
       task_status: TaskStatus;
       completion_mode: CompletionMode;
       incident_status: IncidentStatus;
