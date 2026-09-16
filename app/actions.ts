@@ -62,6 +62,8 @@ export async function unlock(formData: FormData): Promise<{ ok: boolean; error?:
 // (Captain / Senior Barista), from the seed data.
 const ACTING_AS_PHONE = "+919876510002";
 
+const VALID_TELL_CONTENT_TYPES = new Set(["log", "incident", "judgment_call", "task_request", "none"]);
+
 export type TellMessage = { sender: string; text: string };
 
 export type TellClassificationResult = {
@@ -207,14 +209,24 @@ export async function sendTellMessage(formData: FormData): Promise<TellTurnResul
     const input = toolUse.input as FinalizeTellInput;
     results = [];
 
-    for (const item of input.classifications) {
+    for (const rawItem of input.classifications) {
+      // content_type is declared "required" in the tool schema, but the
+      // API doesn't hard-validate a tool call's input against that schema
+      // server-side — the model can still omit or misspell it. Normalize
+      // here so a malformed entry degrades to "none" instead of crashing
+      // every downstream .contentType read (switch below, the closing
+      // summary text, and the client's results panel).
+      const item: TellClassificationItem = {
+        ...rawItem,
+        content_type: VALID_TELL_CONTENT_TYPES.has(rawItem.content_type) ? rawItem.content_type : "none",
+      };
       const { entityType, entityId } = resolveEntity(item, bySubject);
       let savedTable: string | null = null;
       let savedRecord: Record<string, unknown> | null = null;
 
       switch (item.content_type) {
         case "log": {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from("logs")
             .insert({
               outlet_id: outletId,
@@ -227,6 +239,7 @@ export async function sendTellMessage(formData: FormData): Promise<TellTurnResul
             })
             .select()
             .single();
+          if (error) throw new Error(`Could not save log: ${error.message}`);
           savedTable = "logs";
           savedRecord = data;
 
@@ -252,7 +265,7 @@ export async function sendTellMessage(formData: FormData): Promise<TellTurnResul
           const isSafety = item.is_safety ?? false;
           const responseType = isSafety ? "manager_must_engage" : item.response_type ?? "manager_must_engage";
           const resolvedNow = item.resolved_during_session ?? false;
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from("incidents")
             .insert({
               outlet_id: outletId,
@@ -272,12 +285,13 @@ export async function sendTellMessage(formData: FormData): Promise<TellTurnResul
             })
             .select()
             .single();
+          if (error) throw new Error(`Could not save incident: ${error.message}`);
           savedTable = "incidents";
           savedRecord = data;
           break;
         }
         case "judgment_call": {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from("judgment_calls")
             .insert({
               outlet_id: outletId,
@@ -289,6 +303,7 @@ export async function sendTellMessage(formData: FormData): Promise<TellTurnResul
             })
             .select()
             .single();
+          if (error) throw new Error(`Could not save judgment call: ${error.message}`);
           savedTable = "judgment_calls";
           savedRecord = data;
           break;
@@ -298,7 +313,7 @@ export async function sendTellMessage(formData: FormData): Promise<TellTurnResul
           // due_date is required on every task, but the classifier doesn't
           // infer a real deadline from free-form Tell text.
           const placeholderDueDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from("tasks")
             .insert({
               outlet_id: outletId,
@@ -312,6 +327,7 @@ export async function sendTellMessage(formData: FormData): Promise<TellTurnResul
             })
             .select()
             .single();
+          if (error) throw new Error(`Could not save task: ${error.message}`);
           savedTable = "tasks";
           savedRecord = data;
           break;

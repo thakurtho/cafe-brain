@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import {
   openTellSession,
   sendTellMessage,
@@ -36,6 +37,7 @@ export function AskTellApp({ feed }: { feed: ReactNode }) {
 // enough to classify, and one session can produce more than one
 // classification (e.g. a resolved incident that's also a judgment call).
 function TellThread() {
+  const router = useRouter();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<TellMessage[]>([]);
   const [text, setText] = useState("");
@@ -74,6 +76,11 @@ function TellThread() {
           setDone(r.done);
           if (r.results) setResults(r.results);
           setText("");
+          // Re-run this page's Server Components (Outlet Updates feed, the
+          // debug panel) so a finalized Tell shows up without a manual
+          // reload — cheap since neither depends on this component's own
+          // client state.
+          if (r.done) router.refresh();
         } catch (e) {
           setError(e instanceof Error ? e.message : String(e));
         }
