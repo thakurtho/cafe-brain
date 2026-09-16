@@ -13,6 +13,53 @@ import { FINALIZE_TELL_TOOL, type FinalizeTellInput } from "@/lib/tell-classifie
 // wrapper, or a Server Component's data fetch), so they belong in a plain
 // server-only module instead.
 
+// v4 §7: "No answer found → ... → separately, silently logged as a
+// knowledge_gap, first-occurrence framing." Written ONCE per session, at
+// close — not per turn — so a conversation with several failed follow-ups
+// on the same underlying gap produces one knowledge_gap, not several
+// (sendAskMessage in app/actions.ts just accumulates the distinct
+// unanswered questions onto sessions.flag_reason as they happen). The
+// exact-text dedup against an already-open gap from an EARLIER session is
+// a simple write-time placeholder for "first occurrence vs recurrence" —
+// recognizing the same gap phrased differently, or escalating a
+// recurring one, is the deferred async scan's job (v4 §6), not this.
+async function recordKnowledgeGapIfFlagged(
+  supabase: ReturnType<typeof createAdminClient>,
+  outletId: string,
+  sessionId: string
+): Promise<void> {
+  const { data: session } = await supabase
+    .from("sessions")
+    .select("flagged, flag_reason")
+    .eq("id", sessionId)
+    .single();
+  if (!session?.flagged || !session.flag_reason) return;
+
+  const questionText = session.flag_reason;
+
+  const { data: existing } = await supabase
+    .from("knowledge_gaps")
+    .select("id, occurrence_count")
+    .eq("outlet_id", outletId)
+    .eq("status", "open")
+    .ilike("question_text", questionText)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase
+      .from("knowledge_gaps")
+      .update({ occurrence_count: existing.occurrence_count + 1 })
+      .eq("id", existing.id);
+  } else {
+    await supabase.from("knowledge_gaps").insert({
+      outlet_id: outletId,
+      source_session_id: sessionId,
+      question_text: questionText,
+      occurrence_count: 1,
+    });
+  }
+}
+
 /**
  * Runs the v4 §7 session-close review over the whole conversation and
  * closes it. Shared by the user-triggered "End conversation" action and
@@ -32,6 +79,7 @@ export async function closeAskSessionCore(
   if (error) throw new Error(`Could not load conversation: ${error.message}`);
 
   if (!historyRows || historyRows.length === 0) {
+    await recordKnowledgeGapIfFlagged(supabase, outletId, sessionId);
     await supabase.from("sessions").update({ status: "closed", closed_at: new Date().toISOString() }).eq("id", sessionId);
     return [];
   }
@@ -80,6 +128,8 @@ export async function closeAskSessionCore(
   await supabase
     .from("session_classifications")
     .insert({ session_id: sessionId, classified_as: "query", resulting_id: null, confidence: null });
+
+  await recordKnowledgeGapIfFlagged(supabase, outletId, sessionId);
 
   await supabase.from("sessions").update({ status: "closed", closed_at: new Date().toISOString() }).eq("id", sessionId);
 

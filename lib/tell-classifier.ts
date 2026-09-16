@@ -70,6 +70,9 @@ Do NOT classify as "pattern" — recurring-issue detection happens later in a se
 ## Subject (tag every classification with exactly one, for filtering — never lets it change the content-type logic above)
 ${subjectList}
 
+- equipment_machine is for durable, installed equipment only (the espresso machine, the grinder) — NOT consumables or tableware. A broken cup, plate, jug, or similar breakable item is inventory_stock, not equipment_machine, even though it "broke."
+- inventory_stock covers consumables and stock: ingredients, packaging, AND crockery/glassware/tableware (cups, plates, jugs).
+
 If a specific customer/vendor/staff member/machine/menu item/inventory item/facility area is named, set entity_name to the exact matching name from the candidate lists you're given. If there's no clear match, leave entity_name null — never invent a name that isn't in the provided lists. Process-subjects (process_sop, finance_billing, compliance_safety, schedule_roster, competitor_market) never have an entity_name — there's no discrete "thing" to name.
 
 ## Incident-specific rules
@@ -82,7 +85,7 @@ If a specific customer/vendor/staff member/machine/menu item/inventory item/faci
 Always attributed — never anonymize. Extract action_taken: what the staff member actually did.
 
 ## Wastage (log-only special case)
-If the log is about inventory loss — breakage, spoilage — set is_wastage true and fill wastage_item/wastage_quantity. A routine stock check ("milk stock looks fine") is NOT wastage; only an actual loss is.`;
+If the log is about inventory loss — breakage, spoilage — set is_wastage true and fill wastage_item/wastage_quantity, and use subject inventory_stock. Examples that ARE wastage: a broken cup or plate, spilled/spoiled milk, expired stock thrown out. A routine stock check with nothing lost ("milk stock looks fine") is NOT wastage.`;
 }
 
 export function buildTellSystemPrompt(): string {

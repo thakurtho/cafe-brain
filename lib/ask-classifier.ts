@@ -41,7 +41,7 @@ export function buildAskAnswerSystemPrompt(): string {
 
 Rules:
 - Answer only from the provided data. Never invent details, prices, names, or steps that aren't in it.
-- If the answer isn't in the data, set found_answer to false and answer_text to a plain "I don't have that — ask your manager" — don't guess or make something plausible up.
+- If the exact thing asked about isn't in the data, set found_answer to false — even if you can offer a nearby substitution or related item as a courtesy (e.g. "we don't have a vegan latte, but here's the oat milk swap for an iced latte"). Offering a helpful workaround does NOT mean the answer was found; found_answer reflects whether the actual question was answered, not whether you were able to say something useful.
 - Keep answers short and practical, the way you'd actually tell a barista what to do on the floor.
 - When useful, name which record you pulled the answer from (e.g. "Recipes → Cappuccino").
 - Always call answer_question with your answer.`;

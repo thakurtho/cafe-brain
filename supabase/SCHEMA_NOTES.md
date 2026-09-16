@@ -42,14 +42,25 @@ silently — flagging it all here for the table-structure sanity check.
     `"use server"` file becomes a publicly callable endpoint whether the
     UI calls it or not — this logic is only ever invoked from other server
     code, never directly from the client.
-  - **Knowledge-gap dedup**: a failed lookup checks for an already-open
-    `knowledge_gaps` row with the *exact same* `question_text` at this
-    outlet and increments `occurrence_count` instead of duplicating.
-    Explicitly a placeholder for the doc's "first occurrence vs
-    recurrence" framing — recognizing the SAME gap phrased two different
-    ways, or escalating a recurring one to Team as a training signal, is
-    the deferred async Pattern & Knowledge-gap scan's job (v4 §6), not
-    this exact-text check.
+  - **Knowledge-gap write timing — corrected after first QC round**:
+    originally written per-turn, immediately on any failed lookup. You
+    caught that this produces a separate `knowledge_gaps` row per failed
+    follow-up within the SAME conversation (e.g. "how to make a cortado?"
+    then "can't you at least guess?" logged as two gaps, not one) — v4's
+    "first-occurrence framing" is at the session level, not the turn
+    level. Fixed: `sendAskMessage` now just flags the session
+    (`sessions.flagged` + `flag_reason` accumulating the distinct
+    unanswered questions asked) as misses happen; the actual
+    `knowledge_gaps` write happens once, in `closeAskSessionCore`, using
+    the accumulated `flag_reason` as `question_text`.
+  - **Knowledge-gap dedup across sessions**: at close, that write checks
+    for an already-open `knowledge_gaps` row with the *exact same*
+    `question_text` at this outlet (from an earlier session) and
+    increments `occurrence_count` instead of duplicating. Explicitly a
+    placeholder for the doc's "first occurrence vs recurrence" framing —
+    recognizing the SAME gap phrased two different ways, or escalating a
+    recurring one to Team as a training signal, is the deferred async
+    Pattern & Knowledge-gap scan's job (v4 §6), not this exact-text check.
   - **Confirmed NOT a knowledge_gap**: a staff member stating in a *Tell*
     that they're untrained on something (e.g. grinder recalibration) does
     not write anything right now. `knowledge_gap` in v4 is specifically
@@ -115,6 +126,13 @@ silently — flagging it all here for the table-structure sanity check.
   - A wastage/spoilage log also opens a `wastage_entries` row (pending,
     Approve/Review only) per v4 §1 — a routine stock check is not wastage,
     only an actual loss.
+  - **Prompt fix after QC**: the classifier initially tagged a broken cup
+    as `equipment_machine` (and didn't flag it as wastage), since nothing
+    distinguished durable equipment (espresso machine, grinder) from
+    consumables/tableware. `equipment_machine` is now explicitly scoped to
+    durable installed equipment only; `inventory_stock` explicitly
+    includes crockery/glassware, with a worked example under the Wastage
+    rule (broken cup/plate = wastage, `inventory_stock`).
   - **Deliberately not built in this pass** (flagged to you before
     starting, confirmed as out of scope): Ask's own classification
     collapse into the same pipeline (v4 §7); the async Pattern &

@@ -226,39 +226,25 @@ async function buildAskReferenceContext(supabase: ReturnType<typeof createAdminC
   ].join("\n");
 }
 
-// v4 §7: "No answer found → employee told immediately... → separately,
-// silently logged as a knowledge_gap, first-occurrence framing." The
-// dedup here (exact-text match against an already-open gap) is a simple
-// write-time placeholder for that "first occurrence vs recurrence"
-// framing — spotting the SAME gap phrased differently, or escalating a
-// recurring one, is the deferred async scan's job (v4 §6), not this.
-async function recordKnowledgeGapIfNeeded(
+// A miss is recorded on the SESSION as it happens (flagged + flag_reason
+// accumulating the distinct unanswered questions), NOT written to
+// knowledge_gaps yet — the actual write happens once, at session close
+// (see closeAskSessionCore in lib/ask-session.ts), so a conversation with
+// three failed follow-ups on the same underlying gap produces ONE
+// knowledge_gap, not three.
+async function flagUnansweredQuestion(
   supabase: ReturnType<typeof createAdminClient>,
-  outletId: string,
   sessionId: string,
   questionText: string
 ): Promise<void> {
-  const { data: existing } = await supabase
-    .from("knowledge_gaps")
-    .select("id, occurrence_count")
-    .eq("outlet_id", outletId)
-    .eq("status", "open")
-    .ilike("question_text", questionText)
-    .maybeSingle();
+  const { data: session } = await supabase.from("sessions").select("flag_reason").eq("id", sessionId).single();
+  const existing = session?.flag_reason ?? "";
+  const already = existing
+    .split("; ")
+    .some((q) => q.trim().toLowerCase() === questionText.trim().toLowerCase());
+  const updatedReason = already ? existing : existing ? `${existing}; ${questionText}` : questionText;
 
-  if (existing) {
-    await supabase
-      .from("knowledge_gaps")
-      .update({ occurrence_count: existing.occurrence_count + 1 })
-      .eq("id", existing.id);
-  } else {
-    await supabase.from("knowledge_gaps").insert({
-      outlet_id: outletId,
-      source_session_id: sessionId,
-      question_text: questionText,
-      occurrence_count: 1,
-    });
-  }
+  await supabase.from("sessions").update({ flagged: true, flag_reason: updatedReason }).eq("id", sessionId);
 }
 
 export type AskTurnResult = { sessionId: string; messages: TellMessage[] };
@@ -323,7 +309,7 @@ export async function sendAskMessage(formData: FormData): Promise<AskTurnResult>
   await supabase.from("messages").insert({ session_id: sessionId, sender: "assistant", text: input.answer_text });
 
   if (!input.found_answer) {
-    await recordKnowledgeGapIfNeeded(supabase, outletId, sessionId, question);
+    await flagUnansweredQuestion(supabase, sessionId, question);
   }
 
   const { data: updated } = await supabase
