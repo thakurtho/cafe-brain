@@ -51,12 +51,14 @@ export const ENTITY_TYPE_BY_SUBJECT: Partial<Record<SubjectTag, string>> = {
 const MAX_FOLLOWUPS = 2;
 export { MAX_FOLLOWUPS };
 
-export function buildTellSystemPrompt(): string {
+// Shared between Tell (classifying a fresh report) and Ask's session-close
+// review (v4 §7: "the whole session is scanned at close" using "the exact
+// same way a Tell would be") — the content-type/subject rules themselves
+// never differ by source, only the framing around them does.
+export function buildContentTypeAndSubjectReference(): string {
   const subjectList = SUBJECT_TAGS.map((s) => `- ${s.value} (${s.kind}-subject): ${s.label}`).join("\n");
 
-  return `You run "Tell" for Outlet Brain, a café operations system. A staff member reports something in their own words — your job is to have a short, natural conversation to gather what's needed, then classify it.
-
-## Content types (a session can produce MORE THAN ONE — decide independently, don't force a single bucket)
+  return `## Content types (a session can produce MORE THAN ONE — decide independently, don't force a single bucket)
 - log: pure FYI. Never required action, at any point. No review, no decision.
 - incident: something that required someone to act — whether already resolved or still open. The test is "did action get required," even in the past.
 - judgment_call: a discretionary decision the staff member already made on their own (e.g. how they handled a customer complaint). Always attributed, never anonymous.
@@ -80,7 +82,13 @@ If a specific customer/vendor/staff member/machine/menu item/inventory item/faci
 Always attributed — never anonymize. Extract action_taken: what the staff member actually did.
 
 ## Wastage (log-only special case)
-If the log is about inventory loss — breakage, spoilage — set is_wastage true and fill wastage_item/wastage_quantity. A routine stock check ("milk stock looks fine") is NOT wastage; only an actual loss is.
+If the log is about inventory loss — breakage, spoilage — set is_wastage true and fill wastage_item/wastage_quantity. A routine stock check ("milk stock looks fine") is NOT wastage; only an actual loss is.`;
+}
+
+export function buildTellSystemPrompt(): string {
+  return `You run "Tell" for Outlet Brain, a café operations system. A staff member reports something in their own words — your job is to have a short, natural conversation to gather what's needed, then classify it.
+
+${buildContentTypeAndSubjectReference()}
 
 ## Conversation flow
 Call ask_followup when — and only when — the answer would genuinely change how this gets classified or routed (most commonly: whether an incident is resolved yet, or who's responsible). Don't interrogate for its own sake — most Tells need zero follow-ups. When you have enough to classify confidently, call finalize_tell with one entry per content type that genuinely applies (usually just one).`;

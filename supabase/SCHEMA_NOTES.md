@@ -5,6 +5,72 @@ doc referenced it without defining it, or because the dummy data needed a
 column the doc's field list didn't mention. Nothing here was guessed
 silently — flagging it all here for the table-structure sanity check.
 
+- **Ask rebuild against Schema Living Doc v4 §7** (migration `20260916120000`)
+  — "Ask fully collapses into Tell's pipeline. Not a special case." Ask was
+  previously stateless (no session row at all); it now gets the same
+  session/messages capture layer Tell has, per your call to do the full §7
+  collapse rather than just bolting on multi-turn.
+  - New `classification_type` value `'query'` — v4: "Every Ask session
+    still writes a session_classifications row (content_type=query), even
+    on a successful, unremarkable lookup." Written once per session, at
+    close, with `resulting_id`/`confidence` both null since it's a marker,
+    not a pointer to a real record.
+  - Two separate classification moments, matching the doc's own three
+    bullets under §7:
+    1. **Per-turn** (`sendAskMessage`): the model now answers via a forced
+       `answer_question` tool call with an explicit `found_answer`
+       boolean, instead of freeform text — needed to know precisely when a
+       lookup failed, per the doc's literal "No answer found → employee
+       told immediately... → separately, silently logged as a
+       knowledge_gap" language, which happens right then, not deferred to
+       close.
+    2. **At close** (`closeAskSessionCore` in `lib/ask-session.ts`): the
+       whole transcript is re-scanned with the exact same
+       `finalize_tell` tool Tell itself uses (via the extracted
+       `saveTellStyleClassifications` in `lib/classification-writer.ts`)
+       for any operational fact the conversation surfaced — usually
+       nothing, sometimes an incident/log/task/judgment_call.
+  - **Session close mechanism** (your call, since the doc doesn't specify
+    one — Ask has no natural end like Tell's finalize does): an explicit
+    "End conversation" button, backed up by a 5-minute client-side idle
+    timer, backed up AGAIN by a server-side lazy sweep
+    (`sweepStaleAskSessions`) that runs on every Home page load and closes
+    any of the outlet's Ask sessions idle past 5 minutes — same
+    "runs opportunistically on page load, no cron infra" pattern already
+    used for Tasks' auto-archive sweep. Belongs in `lib/ask-session.ts`,
+    not `app/actions.ts`, specifically because every export from a
+    `"use server"` file becomes a publicly callable endpoint whether the
+    UI calls it or not — this logic is only ever invoked from other server
+    code, never directly from the client.
+  - **Knowledge-gap dedup**: a failed lookup checks for an already-open
+    `knowledge_gaps` row with the *exact same* `question_text` at this
+    outlet and increments `occurrence_count` instead of duplicating.
+    Explicitly a placeholder for the doc's "first occurrence vs
+    recurrence" framing — recognizing the SAME gap phrased two different
+    ways, or escalating a recurring one to Team as a training signal, is
+    the deferred async Pattern & Knowledge-gap scan's job (v4 §6), not
+    this exact-text check.
+  - **Confirmed NOT a knowledge_gap**: a staff member stating in a *Tell*
+    that they're untrained on something (e.g. grinder recalibration) does
+    not write anything right now. `knowledge_gap` in v4 is specifically
+    "Ask found no answer" — a hole in the system's knowledge base, not a
+    fact about one person's training status. You confirmed the right home
+    for that is eventually a Team-screen "coaching needed" flag, fed by
+    the same deferred async scan — so no code change belongs here yet.
+  - Refactored `app/actions.ts`'s Tell finalize step (the switch inserting
+    into logs/incidents/judgment_calls/tasks) out into
+    `lib/classification-writer.ts`, and the entity-candidate fetching out
+    into `lib/entity-candidates.ts`, so Tell and Ask's close-time
+    classification share one implementation instead of two copies that
+    could silently drift apart (exactly the kind of duplication that
+    caused the `.replace()` crash on a missing `content_type` — one fix
+    now covers both).
+  - `ACTING_AS_PHONE` moved out of `app/actions.ts` into a new
+    `lib/acting-as.ts` — `home-data.ts` needs it too (for the idle-sweep's
+    attribution), and a `"use server"` file can only export async
+    functions, not plain constants (same reason `app/tasks/tiers.ts`
+    exists).
+
 - **Tell rebuild against Schema Living Doc v4** (migration `20260915120000`)
   — v4's central correction is that content type, not subject, decides
   where a Tell goes; subject just rides along for filtering. Confirmed

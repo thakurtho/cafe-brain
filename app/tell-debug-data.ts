@@ -4,6 +4,7 @@ import { getMusafirOutletId } from "@/lib/outlet";
 
 export type TellDebugRow = {
   id: string;
+  sessionMode: string;
   contentType: string;
   subject: string | null;
   confidence: number | null;
@@ -22,8 +23,8 @@ const TABLE_BY_CONTENT_TYPE: Record<string, { table: string; textColumn: string 
 /**
  * TEST-HARNESS ONLY — not part of the real app (per your request while the
  * real destinations for these records — Team screen, Approve/Review —
- * don't exist yet). Shows the last N Tell classifications straight from
- * session_classifications, with the resulting record's text + subject
+ * don't exist yet). Shows the last N Tell AND Ask classifications straight
+ * from session_classifications, with the resulting record's text + subject
  * looked up so you can see exactly what got saved without a Supabase tab
  * open. Delete app/tell-debug-panel.tsx + this file once those real
  * screens exist.
@@ -34,18 +35,18 @@ export async function getRecentTellDebugData(limit = 15): Promise<TellDebugRow[]
 
   // session_classifications has no outlet_id of its own — join through
   // sessions to scope it, same as everywhere else in this app.
-  const { data: sessionIds, error: sessionsErr } = await supabase
+  const { data: sessions, error: sessionsErr } = await supabase
     .from("sessions")
-    .select("id")
-    .eq("outlet_id", outletId)
-    .eq("mode", "tell");
+    .select("id, mode")
+    .eq("outlet_id", outletId);
   if (sessionsErr) throw new Error(`Could not load sessions: ${sessionsErr.message}`);
-  const ids = (sessionIds ?? []).map((s) => s.id);
+  const modeBySessionId = new Map((sessions ?? []).map((s) => [s.id, s.mode]));
+  const ids = [...modeBySessionId.keys()];
   if (ids.length === 0) return [];
 
   const { data: classifications, error: classErr } = await supabase
     .from("session_classifications")
-    .select("id, classified_as, resulting_id, confidence, created_at")
+    .select("id, session_id, classified_as, resulting_id, confidence, created_at")
     .in("session_id", ids)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -67,6 +68,7 @@ export async function getRecentTellDebugData(limit = 15): Promise<TellDebugRow[]
       }
       return {
         id: c.id,
+        sessionMode: modeBySessionId.get(c.session_id) ?? "unknown",
         contentType: c.classified_as,
         subject,
         confidence: c.confidence,
@@ -76,4 +78,36 @@ export async function getRecentTellDebugData(limit = 15): Promise<TellDebugRow[]
       };
     })
   );
+}
+
+export type KnowledgeGapDebugRow = {
+  id: string;
+  questionText: string;
+  occurrenceCount: number;
+  status: string;
+  createdAt: string;
+};
+
+// knowledge_gaps rows are written directly on a failed Ask lookup (v4
+// §7), not through session_classifications — so they need their own
+// query to show up in the debug panel at all.
+export async function getRecentKnowledgeGaps(limit = 10): Promise<KnowledgeGapDebugRow[]> {
+  const supabase = createAdminClient();
+  const outletId = await getMusafirOutletId();
+
+  const { data, error } = await supabase
+    .from("knowledge_gaps")
+    .select("id, question_text, occurrence_count, status, created_at")
+    .eq("outlet_id", outletId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`Could not load knowledge gaps: ${error.message}`);
+
+  return (data ?? []).map((g) => ({
+    id: g.id,
+    questionText: g.question_text,
+    occurrenceCount: g.occurrence_count,
+    status: g.status,
+    createdAt: g.created_at,
+  }));
 }

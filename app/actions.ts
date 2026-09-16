@@ -8,16 +8,17 @@ import {
   buildTellSystemPrompt,
   ASK_FOLLOWUP_TOOL,
   FINALIZE_TELL_TOOL,
-  SUBJECT_TAGS,
-  ENTITY_TYPE_BY_SUBJECT,
   MAX_FOLLOWUPS,
   type FinalizeTellInput,
   type AskFollowupInput,
-  type TellClassificationItem,
 } from "@/lib/tell-classifier";
-import type { SubjectTag } from "@/lib/supabase/database.types";
-import { ASK_SYSTEM_PROMPT } from "@/lib/ask-prompt";
+import { fetchEntityCandidates, buildEntityContextText } from "@/lib/entity-candidates";
+import { saveTellStyleClassifications, type TellClassificationResult } from "@/lib/classification-writer";
+export type { TellClassificationResult };
+import { ANSWER_QUESTION_TOOL, buildAskAnswerSystemPrompt, type AnswerQuestionInput } from "@/lib/ask-classifier";
+import { closeAskSessionCore } from "@/lib/ask-session";
 import { ACCESS_COOKIE, requireAccess } from "@/lib/access";
+import { ACTING_AS_PHONE } from "@/lib/acting-as";
 
 // ⚠️ This file has THREE pre-auth stopgaps, all temporary, all removable
 // only once real per-user login exists (a fourth — a client-picked
@@ -58,22 +59,7 @@ export async function unlock(formData: FormData): Promise<{ ok: boolean; error?:
   return { ok: true };
 }
 
-// ⚠️ TEMPORARY (pre-auth stopgap #2 — see file header). Aman Rawat
-// (Captain / Senior Barista), from the seed data.
-const ACTING_AS_PHONE = "+919876510002";
-
-const VALID_TELL_CONTENT_TYPES = new Set(["log", "incident", "judgment_call", "task_request", "none"]);
-
 export type TellMessage = { sender: string; text: string };
-
-export type TellClassificationResult = {
-  contentType: string;
-  subject: string | null;
-  reasoning: string;
-  confidence: number;
-  savedTable: string | null;
-  savedRecord: Record<string, unknown> | null;
-};
 
 export type TellTurnResult = {
   sessionId: string;
@@ -81,52 +67,6 @@ export type TellTurnResult = {
   done: boolean;
   results: TellClassificationResult[] | null;
 };
-
-// Fetch every entity-subject's candidate names in one go, so the model
-// always has the full list to resolve entity_name against (v4 §0's 7
-// entity-subjects) — mirrors the same "provide candidates, never let the
-// model invent a name" rule the original classifier used for just
-// machines/customers.
-async function fetchEntityCandidates(supabase: ReturnType<typeof createAdminClient>, outletId: string) {
-  const [machines, customers, vendors, users, menuItems, inventoryItems, facilityAreas] = await Promise.all([
-    supabase.from("machines").select("id, name").eq("outlet_id", outletId),
-    supabase.from("customers").select("id, name").eq("outlet_id", outletId),
-    supabase.from("vendors").select("id, name").eq("outlet_id", outletId),
-    supabase.from("users").select("id, name").eq("outlet_id", outletId),
-    supabase.from("menu_items").select("id, name").eq("outlet_id", outletId),
-    supabase.from("inventory_items").select("id, name").eq("outlet_id", outletId),
-    supabase.from("facility_areas").select("id, name").eq("outlet_id", outletId),
-  ]);
-
-  const bySubject: Partial<Record<SubjectTag, { id: string; name: string }[]>> = {
-    equipment_machine: machines.data ?? [],
-    customer: customers.data ?? [],
-    vendor: vendors.data ?? [],
-    staff_colleague: users.data ?? [],
-    recipe_menu: menuItems.data ?? [],
-    inventory_stock: inventoryItems.data ?? [],
-    facility_premises: facilityAreas.data ?? [],
-  };
-  return bySubject;
-}
-
-function buildEntityContextText(bySubject: Partial<Record<SubjectTag, { id: string; name: string }[]>>): string {
-  return SUBJECT_TAGS.filter((s) => s.kind === "entity")
-    .map((s) => `Known ${s.label} names: ${(bySubject[s.value] ?? []).map((r) => r.name).join(", ") || "(none)"}`)
-    .join("\n");
-}
-
-function resolveEntity(
-  item: TellClassificationItem,
-  bySubject: Partial<Record<SubjectTag, { id: string; name: string }[]>>
-): { entityType: string | null; entityId: string | null } {
-  const subject = item.subject ?? null;
-  if (!subject || !item.entity_name) return { entityType: null, entityId: null };
-  const candidates = bySubject[subject];
-  const match = candidates?.find((c) => c.name === item.entity_name);
-  if (!match) return { entityType: null, entityId: null };
-  return { entityType: ENTITY_TYPE_BY_SUBJECT[subject] ?? null, entityId: match.id };
-}
 
 // Open a fresh Tell session — mirrors drill-down's openDrillDown, just
 // without an entity_links row since a Tell isn't "about" a pre-existing
@@ -207,151 +147,13 @@ export async function sendTellMessage(formData: FormData): Promise<TellTurnResul
     await supabase.from("messages").insert({ session_id: sessionId, sender: "assistant", text: input.question });
   } else {
     const input = toolUse.input as FinalizeTellInput;
-    results = [];
-
-    for (const rawItem of input.classifications) {
-      // content_type is declared "required" in the tool schema, but the
-      // API doesn't hard-validate a tool call's input against that schema
-      // server-side — the model can still omit or misspell it. Normalize
-      // here so a malformed entry degrades to "none" instead of crashing
-      // every downstream .contentType read (switch below, the closing
-      // summary text, and the client's results panel).
-      const item: TellClassificationItem = {
-        ...rawItem,
-        content_type: VALID_TELL_CONTENT_TYPES.has(rawItem.content_type) ? rawItem.content_type : "none",
-      };
-      const { entityType, entityId } = resolveEntity(item, bySubject);
-      let savedTable: string | null = null;
-      let savedRecord: Record<string, unknown> | null = null;
-
-      switch (item.content_type) {
-        case "log": {
-          const { data, error } = await supabase
-            .from("logs")
-            .insert({
-              outlet_id: outletId,
-              source_session_id: sessionId,
-              subject: item.subject ?? null,
-              entity_type: entityType,
-              entity_id: entityId,
-              summary: item.summary,
-              archived: false,
-            })
-            .select()
-            .single();
-          if (error) throw new Error(`Could not save log: ${error.message}`);
-          savedTable = "logs";
-          savedRecord = data;
-
-          // Wastage side effect (v4 §1): a log about inventory loss also
-          // opens a wastage_entries row, pending in Approve/Review — never
-          // shown on Home until approved + synced, never duplicated here.
-          if (item.is_wastage) {
-            await supabase.from("wastage_entries").insert({
-              outlet_id: outletId,
-              source_session_id: sessionId,
-              item: item.wastage_item ?? item.summary,
-              quantity: item.wastage_quantity ?? null,
-              reason: item.summary,
-              status: "pending_approval",
-            });
-          }
-          break;
-        }
-        case "incident": {
-          // Safety hard-forces manager_must_engage in code, not just via
-          // prompt wording (v4 §2: "Safety/injury always forces
-          // mgr_must_engage, overriding the normal floor/manager split").
-          const isSafety = item.is_safety ?? false;
-          const responseType = isSafety ? "manager_must_engage" : item.response_type ?? "manager_must_engage";
-          const resolvedNow = item.resolved_during_session ?? false;
-          const { data, error } = await supabase
-            .from("incidents")
-            .insert({
-              outlet_id: outletId,
-              source_session_id: sessionId,
-              subject: item.subject ?? null,
-              entity_type: entityType,
-              entity_id: entityId,
-              is_safety: isSafety,
-              severity: item.severity ?? null,
-              description: item.summary,
-              status: resolvedNow ? "resolved" : "open",
-              resolved_by: resolvedNow ? userId : null,
-              resolved_at: resolvedNow ? new Date().toISOString() : null,
-              resolution_note: item.resolution_note ?? null,
-              response_type: responseType,
-              requires_immediate_call: item.requires_immediate_call ?? false,
-            })
-            .select()
-            .single();
-          if (error) throw new Error(`Could not save incident: ${error.message}`);
-          savedTable = "incidents";
-          savedRecord = data;
-          break;
-        }
-        case "judgment_call": {
-          const { data, error } = await supabase
-            .from("judgment_calls")
-            .insert({
-              outlet_id: outletId,
-              session_id: sessionId,
-              user_id: userId,
-              subject: item.subject ?? null,
-              situation: item.summary,
-              action_taken: item.action_taken ?? null,
-            })
-            .select()
-            .single();
-          if (error) throw new Error(`Could not save judgment call: ${error.message}`);
-          savedTable = "judgment_calls";
-          savedRecord = data;
-          break;
-        }
-        case "task_request": {
-          // Same placeholder-due-date rationale as before this rebuild:
-          // due_date is required on every task, but the classifier doesn't
-          // infer a real deadline from free-form Tell text.
-          const placeholderDueDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-          const { data, error } = await supabase
-            .from("tasks")
-            .insert({
-              outlet_id: outletId,
-              source_session_id: sessionId,
-              subject: item.subject ?? null,
-              description: item.summary,
-              status: "pending_approval",
-              created_by: userId,
-              self_assigned: false,
-              due_date: placeholderDueDate,
-            })
-            .select()
-            .single();
-          if (error) throw new Error(`Could not save task: ${error.message}`);
-          savedTable = "tasks";
-          savedRecord = data;
-          break;
-        }
-        case "none":
-          break;
-      }
-
-      await supabase.from("session_classifications").insert({
-        session_id: sessionId,
-        classified_as: item.content_type,
-        resulting_id: (savedRecord?.id as string | undefined) ?? null,
-        confidence: item.confidence,
-      });
-
-      results.push({
-        contentType: item.content_type,
-        subject: item.subject ?? null,
-        reasoning: item.reasoning,
-        confidence: item.confidence,
-        savedTable,
-        savedRecord,
-      });
-    }
+    results = await saveTellStyleClassifications(supabase, {
+      outletId,
+      sessionId,
+      userId,
+      classifications: input.classifications,
+      bySubject,
+    });
 
     const closingText =
       results.length === 0 || results.every((r) => r.contentType === "none")
@@ -376,16 +178,7 @@ export async function sendTellMessage(formData: FormData): Promise<TellTurnResul
   };
 }
 
-export type AskResult = { answer: string };
-
-export async function submitAsk(formData: FormData): Promise<AskResult> {
-  requireAccess();
-  const question = String(formData.get("question") ?? "").trim();
-  if (!question) throw new Error("Type a question first.");
-
-  const supabase = createAdminClient();
-  const outletId = await getMusafirOutletId();
-
+async function buildAskReferenceContext(supabase: ReturnType<typeof createAdminClient>, outletId: string): Promise<string> {
   const [
     { data: menuItems },
     { data: recipes },
@@ -409,7 +202,7 @@ export async function submitAsk(formData: FormData): Promise<AskResult> {
     supabase.from("compliance_reminders").select("topic, status, due_date, reminder_date").eq("outlet_id", outletId),
   ]);
 
-  const context = [
+  return [
     "## Menu",
     ...(menuItems ?? []).map((m) => `- ${m.name} (${m.category}) — ₹${m.price}`),
     "",
@@ -431,23 +224,133 @@ export async function submitAsk(formData: FormData): Promise<AskResult> {
     "## Compliance",
     ...(complianceReminders ?? []).map((c) => `- ${c.topic}: ${c.status} (due ${c.due_date})`),
   ].join("\n");
+}
+
+// v4 §7: "No answer found → employee told immediately... → separately,
+// silently logged as a knowledge_gap, first-occurrence framing." The
+// dedup here (exact-text match against an already-open gap) is a simple
+// write-time placeholder for that "first occurrence vs recurrence"
+// framing — spotting the SAME gap phrased differently, or escalating a
+// recurring one, is the deferred async scan's job (v4 §6), not this.
+async function recordKnowledgeGapIfNeeded(
+  supabase: ReturnType<typeof createAdminClient>,
+  outletId: string,
+  sessionId: string,
+  questionText: string
+): Promise<void> {
+  const { data: existing } = await supabase
+    .from("knowledge_gaps")
+    .select("id, occurrence_count")
+    .eq("outlet_id", outletId)
+    .eq("status", "open")
+    .ilike("question_text", questionText)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase
+      .from("knowledge_gaps")
+      .update({ occurrence_count: existing.occurrence_count + 1 })
+      .eq("id", existing.id);
+  } else {
+    await supabase.from("knowledge_gaps").insert({
+      outlet_id: outletId,
+      source_session_id: sessionId,
+      question_text: questionText,
+      occurrence_count: 1,
+    });
+  }
+}
+
+export type AskTurnResult = { sessionId: string; messages: TellMessage[] };
+
+// Open a fresh Ask session — v4 §7 collapses Ask into Tell's pipeline, so
+// it now gets the same session/messages capture layer Tell has, instead
+// of being stateless.
+export async function openAskSession(): Promise<{ sessionId: string; messages: TellMessage[] }> {
+  requireAccess();
+  const supabase = createAdminClient();
+  const outletId = await getMusafirOutletId();
+  const userId = await getUserIdByPhone(ACTING_AS_PHONE);
+
+  const { data: session, error } = await supabase
+    .from("sessions")
+    .insert({ outlet_id: outletId, user_id: userId, initiated_by: "UIC", mode: "ask", status: "open" })
+    .select("id")
+    .single();
+  if (error || !session) throw new Error(error?.message ?? "Failed to open a session.");
+
+  return { sessionId: session.id, messages: [] };
+}
+
+export async function sendAskMessage(formData: FormData): Promise<AskTurnResult> {
+  requireAccess();
+  const sessionId = String(formData.get("sessionId") ?? "");
+  const question = String(formData.get("text") ?? "").trim();
+  if (!sessionId) throw new Error("No Ask session to reply to.");
+  if (!question) throw new Error("Type a question first.");
+
+  const supabase = createAdminClient();
+  const outletId = await getMusafirOutletId();
+
+  await supabase.from("messages").insert({ session_id: sessionId, sender: "user", text: question });
+
+  const { data: historyRows, error: historyErr } = await supabase
+    .from("messages")
+    .select("sender, text")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: true });
+  if (historyErr) throw new Error(`Could not load conversation: ${historyErr.message}`);
+
+  const context = await buildAskReferenceContext(supabase, outletId);
 
   const anthropic = createAnthropicClient();
   const response = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 1024,
-    system: ASK_SYSTEM_PROMPT,
-    messages: [
-      { role: "user", content: `Reference data for Musafir Cafe:\n\n${context}\n\nQuestion: ${question}` },
-    ],
+    system: `${buildAskAnswerSystemPrompt()}\n\nReference data for Musafir Cafe:\n\n${context}`,
+    messages: (historyRows ?? []).map((m) => ({
+      role: m.sender === "assistant" ? ("assistant" as const) : ("user" as const),
+      content: m.text ?? "",
+    })),
+    tools: [ANSWER_QUESTION_TOOL] as any,
+    tool_choice: { type: "tool", name: "answer_question" } as any,
   });
 
-  const answer = response.content
-    .filter((b: any) => b.type === "text")
-    .map((b: any) => b.text)
-    .join("\n");
+  const toolUse = response.content.find((b: any) => b.type === "tool_use") as { input: AnswerQuestionInput } | undefined;
+  if (!toolUse) throw new Error("Claude didn't return an answer.");
+  const input = toolUse.input;
 
-  return { answer };
+  await supabase.from("messages").insert({ session_id: sessionId, sender: "assistant", text: input.answer_text });
+
+  if (!input.found_answer) {
+    await recordKnowledgeGapIfNeeded(supabase, outletId, sessionId, question);
+  }
+
+  const { data: updated } = await supabase
+    .from("messages")
+    .select("sender, text")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: true });
+
+  return { sessionId, messages: (updated ?? []).map((m) => ({ sender: m.sender, text: m.text ?? "" })) };
+}
+
+// User-triggered "End conversation" — runs the v4 §7 session-close review
+// (see closeAskSessionCore) over the whole thread. The idle-timeout
+// backstop (lib/ask-session.ts's sweepStaleAskSessions, called from
+// getHomeFeedData on page load) runs the exact same core logic when an
+// employee doesn't click this.
+export async function closeAskSession(formData: FormData): Promise<{ results: TellClassificationResult[] }> {
+  requireAccess();
+  const sessionId = String(formData.get("sessionId") ?? "");
+  if (!sessionId) throw new Error("No Ask session to close.");
+
+  const supabase = createAdminClient();
+  const outletId = await getMusafirOutletId();
+  const userId = await getUserIdByPhone(ACTING_AS_PHONE);
+
+  const results = await closeAskSessionCore(supabase, sessionId, outletId, userId);
+  return { results };
 }
 
 // Home's updates feed (v4 §1): "Drag-to-archive is a manual, per-item

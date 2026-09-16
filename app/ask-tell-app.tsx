@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useState, useRef, useEffect, useCallback, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   openTellSession,
   sendTellMessage,
-  submitAsk,
+  openAskSession,
+  sendAskMessage,
+  closeAskSession,
   type TellMessage,
   type TellClassificationResult,
-  type AskResult,
 } from "./actions";
 import { MicButton } from "./mic-button";
 import { Nav } from "./nav";
+
+const ASK_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
 export function AskTellApp({ feed }: { feed: ReactNode }) {
   return (
@@ -27,7 +30,7 @@ export function AskTellApp({ feed }: { feed: ReactNode }) {
       <hr style={{ margin: "2rem 0" }} />
       <TellThread />
       <hr style={{ margin: "2rem 0" }} />
-      <AskBox />
+      <AskThread />
     </main>
   );
 }
@@ -158,48 +161,146 @@ function TellThread() {
   );
 }
 
-function AskBox() {
-  const [question, setQuestion] = useState("");
+// Ask, rebuilt against v4 §7 ("Ask fully collapses into Tell's pipeline —
+// not a special case"): a real multi-turn conversation, closed either by
+// clicking "End conversation" or — since employees may not remember to —
+// a 5-minute idle timeout, backed up server-side by sweepStaleAskSessions
+// (lib/ask-session.ts) in case the tab closes before the client timer
+// fires.
+function AskThread() {
+  const router = useRouter();
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<TellMessage[]>([]);
+  const [text, setText] = useState("");
   const [pending, startTransition] = useTransition();
-  const [result, setResult] = useState<AskResult | null>(null);
+  const [closed, setClosed] = useState(false);
+  const [closeResults, setCloseResults] = useState<TellClassificationResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const endConversation = useCallback(
+    (sid: string) => {
+      startTransition(async () => {
+        try {
+          const fd = new FormData();
+          fd.set("sessionId", sid);
+          const r = await closeAskSession(fd);
+          setCloseResults(r.results);
+          setClosed(true);
+          router.refresh();
+        } catch (e) {
+          setError(e instanceof Error ? e.message : String(e));
+        }
+      });
+    },
+    [router]
+  );
+
+  function resetIdleTimer(sid: string) {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => endConversation(sid), ASK_IDLE_TIMEOUT_MS);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+    };
+  }, []);
+
+  function ensureSession(cb: (sid: string) => void) {
+    if (sessionId) {
+      cb(sessionId);
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const opened = await openAskSession();
+        setSessionId(opened.sessionId);
+        cb(opened.sessionId);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    });
+  }
+
+  function send() {
+    if (!text.trim()) return;
+    setError(null);
+    ensureSession((sid) => {
+      startTransition(async () => {
+        try {
+          const fd = new FormData();
+          fd.set("sessionId", sid);
+          fd.set("text", text);
+          const r = await sendAskMessage(fd);
+          setMessages(r.messages);
+          setText("");
+          resetIdleTimer(sid);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : String(e));
+        }
+      });
+    });
+  }
+
+  function startNew() {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    setSessionId(null);
+    setMessages([]);
+    setText("");
+    setClosed(false);
+    setCloseResults(null);
+    setError(null);
+  }
 
   return (
     <section>
       <h2>Ask</h2>
-      <form
-        action={(formData) => {
-          setError(null);
-          setResult(null);
-          startTransition(async () => {
-            try {
-              const r = await submitAsk(formData);
-              setResult(r);
-            } catch (e) {
-              setError(e instanceof Error ? e.message : String(e));
-            }
-          });
-        }}
-      >
-        <textarea
-          name="question"
-          rows={2}
-          style={{ width: "100%" }}
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder={`e.g. "What's the recipe for a cappuccino?" or "What's Shweta's usual order?"`}
-        />
-        <div style={{ marginTop: 4 }}>
-          <button type="submit" disabled={pending}>
-            {pending ? "Thinking…" : "Ask"}
-          </button>
-          <MicButton value={question} onChange={setQuestion} />
+      {messages.length === 0 && (
+        <p style={{ color: "#888", fontSize: "0.9em" }}>
+          {`e.g. "What's the recipe for a cappuccino?" or "What's Shweta's usual order?"`}
+        </p>
+      )}
+      {messages.map((m, i) => (
+        <p key={i} style={{ margin: "4px 0" }}>
+          <b>{m.sender === "assistant" ? "Outlet Brain" : "You"}:</b> {m.text}
+        </p>
+      ))}
+      {!closed && (
+        <div style={{ marginTop: 8 }}>
+          <textarea
+            rows={2}
+            style={{ width: "100%" }}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Ask Outlet Brain something…"
+          />
+          <div style={{ marginTop: 4 }}>
+            <button type="button" onClick={send} disabled={pending || !text.trim()}>
+              {pending ? "…" : "Ask"}
+            </button>
+            <MicButton value={text} onChange={setText} />
+            {sessionId && (
+              <button type="button" onClick={() => endConversation(sessionId)} disabled={pending} style={{ marginLeft: 8 }}>
+                End conversation
+              </button>
+            )}
+          </div>
+          <p style={{ color: "#999", fontSize: "0.75em", marginTop: 4 }}>
+            Auto-ends after 5 minutes of inactivity if you forget to click &quot;End conversation.&quot;
+          </p>
         </div>
-      </form>
+      )}
       {error && <p style={{ color: "crimson" }}>{error}</p>}
-      {result && (
+      {closed && (
         <div style={{ border: "1px solid #ccc", padding: "0.75rem", marginTop: "0.75rem" }}>
-          <p style={{ whiteSpace: "pre-wrap" }}>{result.answer}</p>
+          <p style={{ color: "#888" }}>Conversation ended.</p>
+          {closeResults && closeResults.some((r) => r.contentType !== "none") && (
+            <p>Also captured: {closeResults.filter((r) => r.contentType !== "none").map((r) => r.contentType).join(", ")}.</p>
+          )}
+          <button type="button" onClick={startNew} style={{ marginTop: 8 }}>
+            Start a new Ask
+          </button>
         </div>
       )}
     </section>

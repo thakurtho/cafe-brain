@@ -37,6 +37,7 @@ export type ClassificationType =
   | "incident"
   | "log"
   | "judgment_call"
+  | "query"
   | "none";
 export type SubjectTag =
   | "customer"
