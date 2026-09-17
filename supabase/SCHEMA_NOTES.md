@@ -5,6 +5,26 @@ doc referenced it without defining it, or because the dummy data needed a
 column the doc's field list didn't mention. Nothing here was guessed
 silently — flagging it all here for the table-structure sanity check.
 
+- **Cash flag + broadcasts on Home** (migration `20260917120000`) — closing
+  out the last two gaps in the Tell/Ask rebuild before starting the async
+  Pattern & Knowledge-gap scan, per your sequencing:
+  - `is_cash_related` added to both `logs` and `incidents` (unlike
+    `is_safety`, which is incident-only since a safety-relevant log always
+    escalates to incident per the doc's own collapse rule — see below).
+    v4 §0's own example is explicit that this one needs to live on `logs`
+    too: "a cash-related log (routine till count, no discrepancy) stays a
+    plain log" — the flag doesn't force an escalation to incident on its
+    own, only an actual discrepancy does.
+  - Broadcasts now also appear in the Home feed (`app/home-data.ts` calls
+    `getBroadcastsPageData()` and merges the result in), per v4: "Lands in
+    the Home updates feed for both staff and manager views." They keep
+    their own `/broadcasts` page too — nothing removed, just also
+    surfaced on Home. Not filtered by `target_access_tier` here — Home has
+    no "acting as" viewer concept the way Tasks/Notifications do, so
+    there's no real identity to filter against yet; shown unfiltered,
+    consistent with everything else on this page being outlet-wide rather
+    than per-viewer for now.
+
 - **Ask rebuild against Schema Living Doc v4 §7** (migration `20260916120000`)
   — "Ask fully collapses into Tell's pipeline. Not a special case." Ask was
   previously stateless (no session row at all); it now gets the same

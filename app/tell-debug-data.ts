@@ -7,17 +7,18 @@ export type TellDebugRow = {
   sessionMode: string;
   contentType: string;
   subject: string | null;
+  isCashRelated: boolean;
   confidence: number | null;
   savedTable: string | null;
   summaryText: string | null;
   createdAt: string;
 };
 
-const TABLE_BY_CONTENT_TYPE: Record<string, { table: string; textColumn: string } | undefined> = {
-  log: { table: "logs", textColumn: "summary" },
-  incident: { table: "incidents", textColumn: "description" },
-  judgment_call: { table: "judgment_calls", textColumn: "situation" },
-  task_request: { table: "tasks", textColumn: "description" },
+const TABLE_BY_CONTENT_TYPE: Record<string, { table: string; textColumn: string; hasCashColumn: boolean } | undefined> = {
+  log: { table: "logs", textColumn: "summary", hasCashColumn: true },
+  incident: { table: "incidents", textColumn: "description", hasCashColumn: true },
+  judgment_call: { table: "judgment_calls", textColumn: "situation", hasCashColumn: false },
+  task_request: { table: "tasks", textColumn: "description", hasCashColumn: false },
 };
 
 /**
@@ -57,20 +58,26 @@ export async function getRecentTellDebugData(limit = 15): Promise<TellDebugRow[]
       const mapping = TABLE_BY_CONTENT_TYPE[c.classified_as];
       let summaryText: string | null = null;
       let subject: string | null = null;
+      let isCashRelated = false;
       if (mapping && c.resulting_id) {
+        const columns = mapping.hasCashColumn
+          ? `${mapping.textColumn}, subject, is_cash_related`
+          : `${mapping.textColumn}, subject`;
         const { data } = await (supabase as any)
           .from(mapping.table)
-          .select(`${mapping.textColumn}, subject`)
+          .select(columns)
           .eq("id", c.resulting_id)
           .maybeSingle();
         summaryText = data?.[mapping.textColumn] ?? null;
         subject = data?.subject ?? null;
+        isCashRelated = data?.is_cash_related ?? false;
       }
       return {
         id: c.id,
         sessionMode: modeBySessionId.get(c.session_id) ?? "unknown",
         contentType: c.classified_as,
         subject,
+        isCashRelated,
         confidence: c.confidence,
         savedTable: mapping?.table ?? null,
         summaryText,

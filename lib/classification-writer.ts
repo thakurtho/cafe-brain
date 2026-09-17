@@ -60,6 +60,7 @@ export async function saveTellStyleClassifications(
             entity_id: entityId,
             summary: item.summary,
             archived: false,
+            is_cash_related: item.is_cash_related ?? false,
           })
           .select()
           .single();
@@ -98,6 +99,7 @@ export async function saveTellStyleClassifications(
             entity_type: entityType,
             entity_id: entityId,
             is_safety: isSafety,
+            is_cash_related: item.is_cash_related ?? false,
             severity: item.severity ?? null,
             description: item.summary,
             status: resolvedNow ? "resolved" : "open",

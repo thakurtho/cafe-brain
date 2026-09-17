@@ -29,6 +29,7 @@ export async function TellDebugPanel() {
             <b>[{r.sessionMode}]</b> <b>{r.contentType}</b>
             {r.subject ? ` · ${r.subject}` : ""}
             {r.confidence != null ? ` · ${Math.round(r.confidence * 100)}%` : ""}
+            {r.isCashRelated ? " · 💵" : ""}
           </p>
           <p style={{ margin: "2px 0" }}>
             {r.contentType === "query" ? "(plain lookup, no separate record)" : r.summaryText ?? "(no linked record)"}

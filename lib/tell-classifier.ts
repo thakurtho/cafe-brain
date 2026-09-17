@@ -85,7 +85,10 @@ If a specific customer/vendor/staff member/machine/menu item/inventory item/faci
 Always attributed — never anonymize. Extract action_taken: what the staff member actually did.
 
 ## Wastage (log-only special case)
-If the log is about inventory loss — breakage, spoilage — set is_wastage true and fill wastage_item/wastage_quantity, and use subject inventory_stock. Examples that ARE wastage: a broken cup or plate, spilled/spoiled milk, expired stock thrown out. A routine stock check with nothing lost ("milk stock looks fine") is NOT wastage.`;
+If the log is about inventory loss — breakage, spoilage — set is_wastage true and fill wastage_item/wastage_quantity, and use subject inventory_stock. Examples that ARE wastage: a broken cup or plate, spilled/spoiled milk, expired stock thrown out. A routine stock check with nothing lost ("milk stock looks fine") is NOT wastage.
+
+## Cash flag (available on log or incident — never changes the content-type decision above)
+Set is_cash_related true for anything involving cash handling: till counts, cash float, refunds given in cash, cash safety. A routine cash log with nothing wrong (e.g. "till count done, matches") stays a plain log, just tagged is_cash_related — it does NOT become an incident on its own. Only an actual discrepancy (till doesn't match, cash missing) makes it an incident, still tagged is_cash_related.`;
 }
 
 export function buildTellSystemPrompt(): string {
@@ -145,6 +148,8 @@ export const FINALIZE_TELL_TOOL = {
             is_wastage: { type: "boolean" },
             wastage_item: { type: ["string", "null"] },
             wastage_quantity: { type: ["number", "null"] },
+            // available on log or incident only
+            is_cash_related: { type: "boolean" },
           },
           required: ["content_type", "summary", "reasoning", "confidence"],
         },
@@ -173,6 +178,7 @@ export type TellClassificationItem = {
   is_wastage?: boolean;
   wastage_item?: string | null;
   wastage_quantity?: number | null;
+  is_cash_related?: boolean;
 };
 
 export type FinalizeTellInput = {

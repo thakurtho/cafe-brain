@@ -296,15 +296,18 @@ export interface Database {
       logs: {
         Row: {
           id: string; outlet_id: string; source_session_id: string | null; subject: SubjectTag | null;
-          entity_type: string | null; entity_id: string | null; summary: string; archived: boolean; created_at: string;
+          entity_type: string | null; entity_id: string | null; summary: string; archived: boolean;
+          is_cash_related: boolean; created_at: string;
         };
         Insert: {
           id?: string; outlet_id: string; source_session_id?: string | null; subject?: SubjectTag | null;
-          entity_type?: string | null; entity_id?: string | null; summary: string; archived?: boolean; created_at?: string;
+          entity_type?: string | null; entity_id?: string | null; summary: string; archived?: boolean;
+          is_cash_related?: boolean; created_at?: string;
         };
         Update: {
           id?: string; outlet_id?: string; source_session_id?: string | null; subject?: SubjectTag | null;
-          entity_type?: string | null; entity_id?: string | null; summary?: string; archived?: boolean; created_at?: string;
+          entity_type?: string | null; entity_id?: string | null; summary?: string; archived?: boolean;
+          is_cash_related?: boolean; created_at?: string;
         };
         Relationships: [];
       };
@@ -392,7 +395,8 @@ export interface Database {
       incidents: {
         Row: {
           id: string; outlet_id: string; source_session_id: string | null; subject: SubjectTag | null;
-          entity_type: string | null; entity_id: string | null; is_safety: boolean; severity: IncidentSeverity | null;
+          entity_type: string | null; entity_id: string | null; is_safety: boolean; is_cash_related: boolean;
+          severity: IncidentSeverity | null;
           description: string; status: IncidentStatus; resolved_by: string | null; resolved_at: string | null;
           resolution_voice_session_id: string | null; resolution_note: string | null; handover_reason: string | null;
           handover_session_id: string | null; response_type: IncidentResponseType; requires_immediate_call: boolean;
@@ -400,7 +404,8 @@ export interface Database {
         };
         Insert: {
           id?: string; outlet_id: string; source_session_id?: string | null; subject?: SubjectTag | null;
-          entity_type?: string | null; entity_id?: string | null; is_safety?: boolean; severity?: IncidentSeverity | null;
+          entity_type?: string | null; entity_id?: string | null; is_safety?: boolean; is_cash_related?: boolean;
+          severity?: IncidentSeverity | null;
           description: string; status?: IncidentStatus; resolved_by?: string | null; resolved_at?: string | null;
           resolution_voice_session_id?: string | null; resolution_note?: string | null; handover_reason?: string | null;
           handover_session_id?: string | null; response_type: IncidentResponseType; requires_immediate_call?: boolean;
@@ -408,7 +413,8 @@ export interface Database {
         };
         Update: {
           id?: string; outlet_id?: string; source_session_id?: string | null; subject?: SubjectTag | null;
-          entity_type?: string | null; entity_id?: string | null; is_safety?: boolean; severity?: IncidentSeverity | null;
+          entity_type?: string | null; entity_id?: string | null; is_safety?: boolean; is_cash_related?: boolean;
+          severity?: IncidentSeverity | null;
           description?: string; status?: IncidentStatus; resolved_by?: string | null; resolved_at?: string | null;
           resolution_voice_session_id?: string | null; resolution_note?: string | null; handover_reason?: string | null;
           handover_session_id?: string | null; response_type?: IncidentResponseType; requires_immediate_call?: boolean;
