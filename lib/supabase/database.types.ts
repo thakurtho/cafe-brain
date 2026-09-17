@@ -684,6 +684,21 @@ export interface Database {
         };
         Relationships: [];
       };
+      knowledge_chunks: {
+        Row: {
+          id: string; outlet_id: string; source_table: string; source_id: string; title: string; content: string;
+          embedding: string; created_at: string;
+        };
+        Insert: {
+          id?: string; outlet_id: string; source_table: string; source_id: string; title: string; content: string;
+          embedding: number[]; created_at?: string;
+        };
+        Update: {
+          id?: string; outlet_id?: string; source_table?: string; source_id?: string; title?: string; content?: string;
+          embedding?: number[]; created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -692,6 +707,12 @@ export interface Database {
       current_user_access_tier: { Args: Record<string, never>; Returns: AccessTier | null };
       is_gm_owner: { Args: Record<string, never>; Returns: boolean };
       user_can_access_outlet: { Args: { target_outlet_id: string | null }; Returns: boolean };
+      match_knowledge_chunks: {
+        Args: { query_embedding: number[]; match_outlet_id: string; match_count?: number };
+        Returns: {
+          id: string; source_table: string; source_id: string; title: string; content: string; similarity: number;
+        }[];
+      };
     };
     Enums: {
       access_tier: AccessTier;
