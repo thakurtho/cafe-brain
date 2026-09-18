@@ -1,42 +1,43 @@
 import "server-only";
-import type { createAdminClient } from "@/lib/supabase/admin";
 import { SUBJECT_TAGS, ENTITY_TYPE_BY_SUBJECT, type TellClassificationItem } from "@/lib/tell-classifier";
 import type { SubjectTag } from "@/lib/supabase/database.types";
 
 export type EntityCandidates = Partial<Record<SubjectTag, { id: string; name: string }[]>>;
 
-// Fetch every entity-subject's candidate names in one go, so the model
-// always has the full list to resolve entity_name against (v4 §0's 7
-// entity-subjects). Shared by Tell (classifying a fresh report) and Ask's
-// session-close review, since both need the same entity resolution.
-export async function fetchEntityCandidates(
-  supabase: ReturnType<typeof createAdminClient>,
-  outletId: string
-): Promise<EntityCandidates> {
-  const [machines, customers, vendors, users, menuItems, inventoryItems, facilityAreas] = await Promise.all([
-    supabase.from("machines").select("id, name").eq("outlet_id", outletId),
-    supabase.from("customers").select("id, name").eq("outlet_id", outletId),
-    supabase.from("vendors").select("id, name").eq("outlet_id", outletId),
-    supabase.from("users").select("id, name").eq("outlet_id", outletId),
-    supabase.from("menu_items").select("id, name").eq("outlet_id", outletId),
-    supabase.from("inventory_items").select("id, name").eq("outlet_id", outletId),
-    supabase.from("facility_areas").select("id, name").eq("outlet_id", outletId),
-  ]);
+// table -> subject, the reverse of SUBJECT_TAGS' entityTable — built once
+// at module load rather than on every call.
+const SUBJECT_BY_TABLE: Partial<Record<string, SubjectTag>> = Object.fromEntries(
+  SUBJECT_TAGS.filter((s) => s.entityTable).map((s) => [s.entityTable as string, s.value])
+);
 
-  return {
-    equipment_machine: machines.data ?? [],
-    customer: customers.data ?? [],
-    vendor: vendors.data ?? [],
-    staff_colleague: users.data ?? [],
-    recipe_menu: menuItems.data ?? [],
-    inventory_stock: inventoryItems.data ?? [],
-    facility_premises: facilityAreas.data ?? [],
-  };
+/**
+ * Turns this turn's vector-search results (lib/knowledge-search.ts) into
+ * the same shape resolveEntity expects — replaces what used to be a full
+ * per-subject table dump (fetchEntityCandidates, removed when Ask and
+ * Tell merged into lib/talk-classifier.ts's unified flow). Only the
+ * handful of entity-type chunks that came back as relevant to what was
+ * just said become match candidates, not every customer/vendor/machine/
+ * etc. in the outlet — the whole point of moving to search instead of a
+ * dump. Trade-off, stated plainly: if search misses the right entity, it
+ * won't be offered as a candidate this turn, unlike the old exhaustive
+ * list. Recall can be tuned via the match_count passed to
+ * searchKnowledgeChunks.
+ */
+export function buildEntityCandidatesFromChunks(
+  chunks: { sourceTable: string; sourceId: string; title: string }[]
+): EntityCandidates {
+  const bySubject: EntityCandidates = {};
+  for (const c of chunks) {
+    const subject = SUBJECT_BY_TABLE[c.sourceTable];
+    if (!subject) continue;
+    (bySubject[subject] ??= []).push({ id: c.sourceId, name: c.title });
+  }
+  return bySubject;
 }
 
 export function buildEntityContextText(bySubject: EntityCandidates): string {
   return SUBJECT_TAGS.filter((s) => s.kind === "entity")
-    .map((s) => `Known ${s.label} names: ${(bySubject[s.value] ?? []).map((r) => r.name).join(", ") || "(none)"}`)
+    .map((s) => `Known ${s.label} names right now: ${(bySubject[s.value] ?? []).map((r) => r.name).join(", ") || "(none)"}`)
     .join("\n");
 }
 

@@ -1,9 +1,9 @@
 // Plain links, no client state — safe to use from both Server and Client
 // Components. Kept as one shared place now that there are 5 routes,
 // rather than each page hand-rolling its own cross-links.
-export function Nav({ current }: { current: "ask-tell" | "tasks" | "broadcasts" | "shifts" | "notifications" }) {
+export function Nav({ current }: { current: "talk" | "tasks" | "broadcasts" | "shifts" | "notifications" }) {
   const links: Array<{ href: string; label: string; key: typeof current }> = [
-    { href: "/", label: "Ask / Tell", key: "ask-tell" },
+    { href: "/", label: "Talk", key: "talk" },
     { href: "/tasks", label: "Tasks", key: "tasks" },
     { href: "/broadcasts", label: "Broadcasts", key: "broadcasts" },
     { href: "/shifts", label: "Shift swaps", key: "shifts" },

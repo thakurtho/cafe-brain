@@ -1,9 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getMusafirOutletId, getUserIdByPhone } from "@/lib/outlet";
+import { getMusafirOutletId } from "@/lib/outlet";
 import { SUBJECT_TAGS } from "@/lib/tell-classifier";
-import { sweepStaleAskSessions } from "@/lib/ask-session";
-import { ACTING_AS_PHONE } from "@/lib/acting-as";
+import { sweepStaleTalkSessions } from "@/lib/talk-session";
 import { getBroadcastsPageData } from "./broadcasts/data";
 import type { SubjectTag } from "@/lib/supabase/database.types";
 
@@ -41,11 +40,10 @@ export async function getHomeFeedData(): Promise<HomeFeedItem[]> {
   const supabase = createAdminClient();
   const outletId = await getMusafirOutletId();
 
-  // Idle-timeout backstop for Ask conversations nobody explicitly ended
-  // (v4 §7) — lazy, runs opportunistically on page load, same pattern as
-  // Tasks' auto-archive sweep, since this app has no cron infrastructure.
-  const userId = await getUserIdByPhone(ACTING_AS_PHONE);
-  await sweepStaleAskSessions(outletId, userId);
+  // Idle-timeout backstop for Talk conversations nobody explicitly ended
+  // — lazy, runs opportunistically on page load, same pattern as Tasks'
+  // auto-archive sweep, since this app has no cron infrastructure.
+  await sweepStaleTalkSessions(outletId);
 
   const [logsResult, incidentsResult, { broadcasts }] = await Promise.all([
     supabase

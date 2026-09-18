@@ -5,6 +5,85 @@ doc referenced it without defining it, or because the dummy data needed a
 column the doc's field list didn't mention. Nothing here was guessed
 silently — flagging it all here for the table-structure sanity check.
 
+- **Ask and Tell merged into one conversation** (migrations
+  `20260918120000`, `20260918130000`) — a real deviation from v4's own
+  structure (it still describes Ask and Tell as two separate flowcharts),
+  agreed with you directly after you noticed the split was artificial from
+  a floor employee's side: reporting a cash shortage and then asking what
+  to do about it happened in one breath, not two separate visits to two
+  separate boxes.
+  - New `session_mode` value `'talk'` — neither `'ask'` nor `'tell'` fit a
+    session that can do both. `'ask'` is untouched for `drill-down-actions.ts`'s
+    unrelated "discuss this" conversations, which just reuse the enum
+    value as a generic "this is open" tag.
+  - **The one real behavior change**: recording something (`finalize_tell`)
+    no longer ends the conversation. In the old separate Tell flow,
+    classifying and closing were the same moment. Here they're split — the
+    model can log an incident and the staff member can keep talking
+    afterward (ask something else, report something else). The
+    conversation only ends via an explicit "End conversation" action or a
+    5-minute idle timeout (`lib/talk-session.ts`'s `sweepStaleTalkSessions`,
+    called from `getHomeFeedData` on page load — same "no cron infra, lazy
+    sweep on page load" pattern as Tasks' auto-archive).
+  - Because classification now happens continuously as things come up,
+    the old Ask-close step's whole-transcript re-scan
+    (`closeAskSessionCore`, one extra Claude call per close) is gone.
+    Closing a Talk session is now just: write the mandatory "a
+    conversation happened here" marker (`classified_as='query'`, v4 §7's
+    language generalized from "even on an unremarkable lookup" to "even on
+    a conversation that logged nothing"), flush any flagged knowledge gap,
+    mark closed. No Claude call needed to close.
+  - Safety valve against endless clarifying questions, replacing the old
+    Tell flow's hard 2-follow-up-then-force-finalize cap: a flat cap
+    doesn't fit a conversation that's expected to run longer than a single
+    report. `MAX_TALK_TURNS_BEFORE_LIMITING_FOLLOWUPS` (8) just drops
+    `ask_followup` from the tool list past that point, leaving
+    `answer_question`/`finalize_tell` available either way — not a "you
+    must decide now" force.
+  - Old `openTellSession`/`sendTellMessage`/`openAskSession`/
+    `sendAskMessage`/`closeAskSession` and their UI (`ask-tell-app.tsx`)
+    are gone, not kept alongside — replaced by `openTalkSession`/
+    `sendTalkMessage`/`endTalkSession` and `talk-app.tsx`.
+
+- **Real vector search, replacing full-table context dumps** (migration
+  `20260918120000`) — you flagged (correctly) that reasoning about this
+  against the current dummy data was the wrong basis for the decision: a
+  real café's menu/SOPs/training/customer list will be much larger than
+  what's seeded here, and both Tell's entity-name matching and Ask's
+  knowledge-base grounding were reading EVERY row of EVERY relevant table
+  into EVERY prompt, unconditionally. That stops scaling long before a
+  real café's data volume.
+  - One unified `knowledge_chunks` table rather than an embedding column
+    bolted onto seven different tables — indexes both long-form knowledge
+    (recipes, SOPs, training modules, compliance reminders) AND short
+    entity records (customers, vendors, machines, menu items, inventory
+    items, facility areas, staff). You specifically pushed back on
+    treating these as two different retrieval problems once Ask and Tell
+    became one flow — agreed, and folded entity resolution into the same
+    search instead of keeping a separate exhaustive-list mechanism for it.
+  - Embeddings come from **Voyage AI** (`voyage-3-lite`, 512 dimensions) —
+    Claude doesn't generate embeddings itself; Voyage is Anthropic's own
+    recommended pairing for this. New `VOYAGE_API_KEY` env var, requested
+    and supplied the same way every other secret in this project has been
+    — `.env.local` only, never pasted in chat.
+  - `pgvector`'s HNSW index + a `match_knowledge_chunks` Postgres function
+    (called via `.rpc()`, since supabase-js has no native operator syntax
+    for "order by vector distance") — the standard Supabase pattern for
+    this, not something invented for this project.
+  - **One real trade-off, stated plainly**: search returns the ~12
+    closest-matching chunks per turn, not an exhaustive list. If the
+    semantic match misses the right entity or document, it won't be
+    offered as a candidate that turn — a real behavior change from the old
+    exhaustive dump, which could never miss something that existed. Chosen
+    deliberately: the alternative (keep dumping everything) doesn't survive
+    contact with real café data volume.
+  - **No live admin UI yet** to create/edit recipes, SOPs, etc. — still
+    only the SQL seed script, per your call that admin tooling is a
+    pre-MVP requirement, not a testing-phase one. So embeddings don't
+    auto-update when content changes; re-run `npm run backfill-knowledge`
+    (`scripts/backfill-knowledge-chunks.ts`) by hand after seed data
+    changes, until a real admin UI + on-write embedding pipeline exists.
+
 - **Cash flag + broadcasts on Home** (migration `20260917120000`) — closing
   out the last two gaps in the Tell/Ask rebuild before starting the async
   Pattern & Knowledge-gap scan, per your sequencing:

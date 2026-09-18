@@ -25,7 +25,7 @@ export type Json =
 
 export type AccessTier = "floor_staff" | "shift_manager" | "outlet_manager" | "gm_owner";
 export type ApprovalStatus = "draft" | "pending" | "approved" | "rejected";
-export type SessionMode = "ask" | "tell";
+export type SessionMode = "ask" | "tell" | "talk";
 export type SessionInitiator = "BIC" | "UIC";
 export type SessionStatus = "open" | "closed";
 export type MessageSender = "user" | "assistant" | "system";

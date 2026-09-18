@@ -5,14 +5,14 @@ import type { SubjectTag } from "@/lib/supabase/database.types";
  * Classification rules transcribed from
  * docs/Outlet_Brain_Schema_Living_Doc_v4.md §0–§4 (superseding the v1 doc
  * this file was originally built against). The central correction v4
- * makes: CONTENT TYPE, not subject, decides where a Tell goes. Subject is
- * a tag that rides along for filtering/search — never a fork in logic.
+ * makes: CONTENT TYPE, not subject, decides where something goes. Subject
+ * is a tag that rides along for filtering/search — never a fork in logic.
  *
- * Tell is now a real conversation, not one-shot: the model can call
- * ask_followup as many times as it needs (capped by the caller) before
- * calling finalize_tell, and finalize_tell accepts MORE THAN ONE
- * classification per session (e.g. a resolved incident that's also a
- * judgment call) — v4 is explicit that a session can produce several.
+ * Originally built for Tell specifically, then reused as-is for Ask's own
+ * session-close review once §7 collapsed Ask into the same pipeline.
+ * Ask and Tell have since merged into one conversational flow (see
+ * lib/talk-classifier.ts) — these rules didn't need to change for that,
+ * since v4 already described them identically for both.
  */
 
 export const SUBJECT_TAGS: Array<{
@@ -48,10 +48,7 @@ export const ENTITY_TYPE_BY_SUBJECT: Partial<Record<SubjectTag, string>> = {
   facility_premises: "facility_area",
 };
 
-const MAX_FOLLOWUPS = 2;
-export { MAX_FOLLOWUPS };
-
-// Shared between Tell (classifying a fresh report) and Ask's session-close
+// Shared between Tell-style classification and Ask's session-close
 // review (v4 §7: "the whole session is scanned at close" using "the exact
 // same way a Tell would be") — the content-type/subject rules themselves
 // never differ by source, only the framing around them does.
@@ -91,14 +88,10 @@ If the log is about inventory loss — breakage, spoilage — set is_wastage tru
 Set is_cash_related true for anything involving cash handling: till counts, cash float, refunds given in cash, cash safety. A routine cash log with nothing wrong (e.g. "till count done, matches") stays a plain log, just tagged is_cash_related — it does NOT become an incident on its own. Only an actual discrepancy (till doesn't match, cash missing) makes it an incident, still tagged is_cash_related.`;
 }
 
-export function buildTellSystemPrompt(): string {
-  return `You run "Tell" for Outlet Brain, a café operations system. A staff member reports something in their own words — your job is to have a short, natural conversation to gather what's needed, then classify it.
-
-${buildContentTypeAndSubjectReference()}
-
-## Conversation flow
-Call ask_followup when — and only when — the answer would genuinely change how this gets classified or routed (most commonly: whether an incident is resolved yet, or who's responsible). Don't interrogate for its own sake — most Tells need zero follow-ups. When you have enough to classify confidently, call finalize_tell with one entry per content type that genuinely applies (usually just one).`;
-}
+// The old single-purpose Tell prompt (kept only in git history) has been
+// replaced by lib/talk-classifier.ts's buildTalkSystemPrompt, which wraps
+// buildContentTypeAndSubjectReference with the unified Ask+Tell framing —
+// see SCHEMA_NOTES.md for why the two merged.
 
 export const ASK_FOLLOWUP_TOOL = {
   name: "ask_followup",
@@ -118,7 +111,7 @@ const subjectEnumWithNull = [...SUBJECT_TAGS.map((s) => s.value), null];
 export const FINALIZE_TELL_TOOL = {
   name: "finalize_tell",
   description:
-    "Classify this Tell session now that you have enough information. Provide one entry per content type that genuinely applies — most sessions produce exactly one, but a session can legitimately produce more than one (e.g. a resolved incident that's also a judgment call).",
+    "Record whatever is reportable in the conversation SO FAR — call this as soon as you have enough information for at least one entry, not just once at the very end. This does NOT end the conversation; the staff member can keep talking afterward. Provide one entry per content type that genuinely applies — usually just one, but a single exchange can legitimately produce more than one (e.g. a resolved incident that's also a judgment call). Only call this when there's something concrete to record; don't call it just to acknowledge a plain answer with nothing new to log.",
   input_schema: {
     type: "object",
     properties: {

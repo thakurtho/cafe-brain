@@ -1,6 +1,6 @@
 import { isUnlocked } from "@/lib/access";
 import { Gate } from "./gate";
-import { AskTellApp } from "./ask-tell-app";
+import { TalkApp } from "./talk-app";
 import { HomeFeed } from "./home-feed";
 import { TellDebugPanel } from "./tell-debug-panel";
 
@@ -11,7 +11,7 @@ export default function Home() {
   if (!isUnlocked()) return <Gate />;
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "flex-start" }}>
-      <AskTellApp feed={<HomeFeed />} />
+      <TalkApp feed={<HomeFeed />} />
       <TellDebugPanel />
     </div>
   );
